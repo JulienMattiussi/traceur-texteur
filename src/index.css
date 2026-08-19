@@ -1,0 +1,51 @@
+@import 'tailwindcss';
+
+/*
+  Le fond est un réseau de courbes très pâles : le sujet de l'application est le
+  tracé, et ça suffit à sortir la page du gris uniforme sans rien lui disputer.
+  Les cartes sont opaques, elles le masquent là où on lit.
+*/
+body {
+  background-color: #f8fafc;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    transparent 46%,
+    #eef2f7 46%,
+    #eef2f7 48%,
+    transparent 48%
+  );
+  background-size: 64px 64px;
+}
+
+/* À l'impression, seule la feuille doit rester : ni réglages, ni mesures. */
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+    /* Le réseau de courbes parasiterait le texte sur le papier. */
+    background-image: none;
+  }
+
+  /*
+    La feuille doit tenir sur UNE page. Sans borne de hauteur, un format portrait
+    dépasse de quelques millimètres et le navigateur ajoute une seconde page,
+    vide. La marge de sécurité couvre les en-têtes et pieds de page que le
+    navigateur ajoute de lui-même, en dehors de notre contrôle.
+
+    Ciblé sur la feuille : les autres SVG de la page (la marque) ne doivent pas
+    être redimensionnés. Le SVG porte déjà ses propres marges, d'où `@page` à
+    zéro : les cumuler rétrécirait le texte pour rien.
+  */
+  .sheet svg {
+    display: block;
+    margin: 0 auto;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 96vh;
+  }
+}
