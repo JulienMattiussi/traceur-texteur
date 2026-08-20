@@ -14,11 +14,11 @@
  */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { canvasFor, toPixels, type Format } from '../src/lib/page.ts'
-import { compose } from '../src/lib/pipeline.ts'
-import { DEFAULT_SETTINGS, type Settings } from '../src/lib/settings.ts'
-import { buildShape } from '../src/lib/shapes.ts'
-import { renderSvg } from '../src/lib/svg.ts'
+import { canvasFor, toPixels, type Format } from '@/lib/page'
+import { compose } from '@/lib/pipeline'
+import { DEFAULT_SETTINGS, type Settings } from '@/lib/settings'
+import { buildShape } from '@/lib/shapes'
+import { renderSvg } from '@/lib/svg'
 
 /** Le format imposé par les réseaux sociaux, en pixels. */
 const WIDTH = 1200

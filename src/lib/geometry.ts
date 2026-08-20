@@ -105,8 +105,13 @@ export function wrapAngle(angle: number): number {
   return wrapped
 }
 
-/** Index voisin, en bouclant sur un tracé fermé et en butant sur un tracé ouvert. */
-function neighbour(index: number, offset: number, count: number, closed: boolean): number {
+/**
+ * Index voisin : on boucle sur un tracé fermé, on bute sur un tracé ouvert.
+ *
+ * Exporté parce que `relax.ts` en a besoin exactement de la même façon, et que deux
+ * copies de cette arithmétique auraient fini par différer sur le signe du modulo.
+ */
+export function wrapIndex(index: number, offset: number, count: number, closed: boolean): number {
   if (closed) return (((index + offset) % count) + count) % count
   return Math.max(0, Math.min(count - 1, index + offset))
 }
@@ -126,8 +131,8 @@ export function tangentAngles(points: Point[], window: number, closed: boolean):
   if (count < 2) return angles.fill(0)
 
   for (let i = 0; i < count; i++) {
-    const before = points[neighbour(i, -window, count, closed)]!
-    const after = points[neighbour(i, window, count, closed)]!
+    const before = points[wrapIndex(i, -window, count, closed)]!
+    const after = points[wrapIndex(i, window, count, closed)]!
     // Sur un tracé ouvert, les bords voient une fenêtre tronquée ; si elle
     // dégénère en un seul point, on retombe sur les voisins immédiats.
     if (before === after) {
@@ -171,8 +176,8 @@ export function curvatures(
   const total = arc[count]!
 
   for (let i = 0; i < count; i++) {
-    const before = neighbour(i, -window, count, closed)
-    const after = neighbour(i, window, count, closed)
+    const before = wrapIndex(i, -window, count, closed)
+    const after = wrapIndex(i, window, count, closed)
     if (before === after) continue
 
     // Sur un tracé fermé, la fenêtre peut enjamber le point de recollement : l'arc
@@ -192,19 +197,28 @@ export function sampledLength(count: number, step: number, closed: boolean): num
   return closed ? count * step : (count - 1) * step
 }
 
+/**
+ * Où tombe l'abscisse curviligne `s` dans un tableau d'échantillons : entre les
+ * indices `i` et `j`, à la fraction `t`.
+ *
+ * Les trois interpolations qui suivent ne diffèrent que par la façon de mélanger
+ * les deux valeurs encadrantes ; c'est ce repérage qu'elles ont en commun, et le
+ * dupliquer trois fois faisait trois endroits où se tromper sur le bouclage.
+ */
+function locate(count: number, s: number, step: number, closed: boolean) {
+  const position = s / step
+  const floor = Math.floor(position)
+  const i = wrapIndex(floor, 0, count, closed)
+  return { i, j: wrapIndex(i, 1, count, closed), t: position - floor }
+}
+
 /** Interpole une valeur d'un tableau échantillonné à l'abscisse curviligne `s`. */
 export function sampleAt(values: number[], s: number, step: number, closed: boolean): number {
   const count = values.length
   if (count === 0) return 0
   if (count === 1) return values[0]!
 
-  const position = s / step
-  const floor = Math.floor(position)
-  const t = position - floor
-
-  const i = closed ? ((floor % count) + count) % count : Math.max(0, Math.min(count - 1, floor))
-  const j = closed ? (i + 1) % count : Math.min(count - 1, i + 1)
-
+  const { i, j, t } = locate(count, s, step, closed)
   return values[i]! + (values[j]! - values[i]!) * t
 }
 
@@ -214,13 +228,7 @@ export function angleAt(angles: number[], s: number, step: number, closed: boole
   if (count === 0) return 0
   if (count === 1) return angles[0]!
 
-  const position = s / step
-  const floor = Math.floor(position)
-  const t = position - floor
-
-  const i = closed ? ((floor % count) + count) % count : Math.max(0, Math.min(count - 1, floor))
-  const j = closed ? (i + 1) % count : Math.min(count - 1, i + 1)
-
+  const { i, j, t } = locate(count, s, step, closed)
   return angles[i]! + wrapAngle(angles[j]! - angles[i]!) * t
 }
 
@@ -229,32 +237,8 @@ export function pointAt(points: Point[], s: number, step: number, closed: boolea
   if (count === 0) return { x: 0, y: 0 }
   if (count === 1) return points[0]!
 
-  const position = s / step
-  const floor = Math.floor(position)
-  const t = position - floor
-
-  const i = closed ? ((floor % count) + count) % count : Math.max(0, Math.min(count - 1, floor))
-  const j = closed ? (i + 1) % count : Math.min(count - 1, i + 1)
-
+  const { i, j, t } = locate(count, s, step, closed)
   const a = points[i]!
   const b = points[j]!
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
-}
-
-/**
- * Décale les coordonnées de cellule pour qu'elles restent positives : les
- * grilles indexent des points qui peuvent sortir légèrement du cadre.
- */
-const CELL_ORIGIN = 1 << 15
-
-/**
- * Identifiant numérique d'une cellule de grille.
- *
- * Une clé chaîne (`"12,7"`) marche aussi mais coûte une allocation par lecture,
- * et les grilles de ce projet sont lues neuf fois par point sur des dizaines de
- * milliers de points : mesuré, le passage au nombre divise le temps de calcul de
- * la place libre par trois.
- */
-export function cellKey(cellX: number, cellY: number): number {
-  return (cellX + CELL_ORIGIN) * 65536 + (cellY + CELL_ORIGIN)
 }

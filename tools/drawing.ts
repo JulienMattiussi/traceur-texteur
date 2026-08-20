@@ -7,7 +7,7 @@
  * (binarisation, suivi de contour, cadrage) sans dépendre du décodeur d'images du
  * navigateur, qui est la seule pièce que `src/lib` ne contient pas.
  */
-import type { Point } from '../src/lib/types.ts'
+import type { Point } from '@/lib/types'
 
 interface Drawing {
   gray: Uint8Array
@@ -28,12 +28,7 @@ function distanceToSegment(px: number, py: number, a: Point, b: Point): number {
 }
 
 /** Rasterise des lignes brisées épaisses : encre noire sur papier blanc. */
-function drawStrokes(
-  width: number,
-  height: number,
-  paths: Point[][],
-  thickness: number,
-): Drawing {
+function drawStrokes(width: number, height: number, paths: Point[][], thickness: number): Drawing {
   const gray = new Uint8Array(width * height).fill(255)
 
   for (const path of paths) {

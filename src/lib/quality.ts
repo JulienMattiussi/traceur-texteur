@@ -1,5 +1,5 @@
 import type { FontMetrics } from '@/lib/fonts'
-import { cellKey } from '@/lib/geometry'
+import { buildCellGrid } from '@/lib/grid'
 import { advanceOf, bandHeight } from '@/lib/metrics'
 import type { Glyph, Point } from '@/lib/types'
 
@@ -98,16 +98,12 @@ export function countOverlaps(glyphs: Glyph[], font: FontMetrics, slack = 0.98):
   for (const box of boxes) reach = Math.max(reach, radiusOf(box))
   const cell = Math.max(2 * reach, 1e-6)
 
-  const buckets = new Map<number, number[]>()
-  for (let i = 0; i < boxes.length; i++) {
-    const key = cellKey(
-      Math.floor(boxes[i]!.centre.x / cell),
-      Math.floor(boxes[i]!.centre.y / cell),
-    )
-    const bucket = buckets.get(key)
-    if (bucket) bucket.push(i)
-    else buckets.set(key, [i])
-  }
+  const grid = buildCellGrid(
+    boxes.length,
+    cell,
+    (index) => boxes[index]!.centre.x,
+    (index) => boxes[index]!.centre.y,
+  )
 
   // Chaque caractère n'appartient qu'à une cellule, donc une paire n'est visitée
   // qu'une fois : pas de dédoublonnage à faire.
@@ -115,12 +111,12 @@ export function countOverlaps(glyphs: Glyph[], font: FontMetrics, slack = 0.98):
 
   for (let i = 0; i < boxes.length; i++) {
     const a = boxes[i]!
-    const cellX = Math.floor(a.centre.x / cell)
-    const cellY = Math.floor(a.centre.y / cell)
+    const cellX = grid.columnOf(a.centre.x)
+    const cellY = grid.columnOf(a.centre.y)
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        const bucket = buckets.get(cellKey(cellX + dx, cellY + dy))
+        const bucket = grid.bucketAt(cellX + dx, cellY + dy)
         if (!bucket) continue
 
         for (const j of bucket) {

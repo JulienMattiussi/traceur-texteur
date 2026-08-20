@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   angleAt,
-  cellKey,
   curvatures,
   dedupe,
   distance,
@@ -179,13 +178,5 @@ describe('interpolation', () => {
       { x: 10, y: 20 },
     ]
     expect(pointAt(points, 0.5, 1, false)).toEqual({ x: 5, y: 10 })
-  })
-})
-
-describe('cellKey', () => {
-  it('distingue toutes les cellules voisines, coordonnées négatives comprises', () => {
-    const keys = new Set<number>()
-    for (let x = -3; x <= 3; x++) for (let y = -3; y <= 3; y++) keys.add(cellKey(x, y))
-    expect(keys.size).toBe(49)
   })
 })

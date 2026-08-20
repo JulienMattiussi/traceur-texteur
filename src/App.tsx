@@ -6,15 +6,13 @@ import { SourcePanel } from '@/components/SourcePanel'
 import { StatsPanel } from '@/components/StatsPanel'
 import { TextPanel } from '@/components/TextPanel'
 import { Toolbar } from '@/components/Toolbar'
-import { canvasFor, fitStrokes, formatByKey, toPixels } from '@/lib/page'
+import { canvasFor, formatByKey } from '@/lib/page'
 import { renderPdf } from '@/lib/pdf'
 import { compose } from '@/lib/pipeline'
 import { DEFAULT_SETTINGS, type Settings, type SourceKind } from '@/lib/settings'
-import { buildShape } from '@/lib/shapes'
-import { freehandStroke } from '@/lib/smooth'
+import { strokesFor } from '@/lib/source'
 import { renderSvg } from '@/lib/svg'
-import { orderStrokes, traceImage } from '@/lib/trace'
-import type { Point, Stroke } from '@/lib/types'
+import type { Point } from '@/lib/types'
 import { download, loadGrayImage, type LoadedImage } from '@/platform/image'
 import { rasterize } from '@/platform/raster'
 
@@ -76,46 +74,10 @@ export default function App() {
    * loin l'étape la plus lourde, et bouger le curseur de corps maximal ne doit
    * pas la rejouer.
    */
-  const strokes = useMemo<Stroke[]>(() => {
-    if (source === 'forme') {
-      return [
-        buildShape(settings.shape, canvas.inset, {
-          corner: toPixels(settings.cornerMm),
-          turns: settings.turns,
-          teeth: settings.teeth,
-        }),
-      ]
-    }
-
-    if (source === 'dessin') {
-      if (!image) return []
-      const traced = traceImage(image.gray, image.width, image.height, {
-        mode: settings.traceMode,
-        threshold: settings.threshold,
-        minBlobArea: settings.minBlobArea,
-        pruneSpursBelow: settings.pruneSpursBelow,
-        // La longueur minimale est un réglage de page, exprimé en millimètres
-        // imprimés ; elle doit donc être comparée après cadrage, pas dans les
-        // pixels de l'image d'origine, dont l'échelle est arbitraire.
-        minLength: 0,
-      })
-      return orderStrokes(fitStrokes(traced, canvas), toPixels(settings.minLengthMm))
-    }
-
-    const scaled = paths.map((path) => ({
-      points: path.map((point) => ({
-        x: canvas.inset.x + point.x * canvas.inset.width,
-        y: canvas.inset.y + point.y * canvas.inset.height,
-      })),
-      closed: false,
-    }))
-
-    return scaled
-      .map((stroke) =>
-        freehandStroke(stroke.points, { passes: 6, closeWithin: toPixels(6) }),
-      )
-      .filter((stroke): stroke is Stroke => stroke !== null)
-  }, [source, settings, canvas, image, paths])
+  const strokes = useMemo(
+    () => strokesFor(source, settings, canvas, { image, paths }),
+    [source, settings, canvas, image, paths],
+  )
 
   const composition = useMemo(
     () => (strokes.length > 0 ? compose(strokes, canvas, settings) : null),
@@ -131,7 +93,11 @@ export default function App() {
 
   const exportPdf = (): void => {
     if (!composition) return
-    download(`${baseName}.pdf`, renderPdf(composition, format, { title: baseName }), 'application/pdf')
+    download(
+      `${baseName}.pdf`,
+      renderPdf(composition, format, { title: baseName }),
+      'application/pdf',
+    )
   }
 
   const exportPng = async (): Promise<void> => {

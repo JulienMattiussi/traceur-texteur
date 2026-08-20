@@ -1,4 +1,4 @@
-import { cellKey } from '@/lib/geometry'
+import { buildCellGrid } from '@/lib/grid'
 import type { Point } from '@/lib/types'
 
 /**
@@ -111,15 +111,12 @@ export function measureClearances(strokes: Sampled[], options: ClearanceOptions)
 
   // Grille au pas du plafond : tout candidat à moins de `cap` tombe dans l'une
   // des neuf cellules autour de la cellule du point interrogé.
-  const cell = Math.max(cap, 1e-6)
-  const buckets = new Map<number, number[]>()
-
-  for (let k = 0; k < xs.length; k++) {
-    const key = cellKey(Math.floor(xs[k]! / cell), Math.floor(ys[k]! / cell))
-    const bucket = buckets.get(key)
-    if (bucket) bucket.push(k)
-    else buckets.set(key, [k])
-  }
+  const grid = buildCellGrid(
+    xs.length,
+    cap,
+    (index) => xs[index]!,
+    (index) => ys[index]!,
+  )
 
   const capSquared = cap * cap
 
@@ -130,12 +127,12 @@ export function measureClearances(strokes: Sampled[], options: ClearanceOptions)
     const border = borderClearance(x, y, options)
     let best = Math.min(capSquared, border * border)
 
-    const cellX = Math.floor(x / cell)
-    const cellY = Math.floor(y / cell)
+    const cellX = grid.columnOf(x)
+    const cellY = grid.columnOf(y)
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
-        const bucket = buckets.get(cellKey(cellX + dx, cellY + dy))
+        const bucket = grid.bucketAt(cellX + dx, cellY + dy)
         if (!bucket) continue
 
         for (const other of bucket) {

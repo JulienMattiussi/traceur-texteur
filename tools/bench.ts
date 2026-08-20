@@ -9,16 +9,14 @@
  *   make bench
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { canvasFor, formatByKey, toPixels } from '../src/lib/page.ts'
-import { renderPdf } from '../src/lib/pdf.ts'
-import { compose } from '../src/lib/pipeline.ts'
-import { DEFAULT_SETTINGS, type Settings } from '../src/lib/settings.ts'
-import { buildShape, SHAPES, type ShapeKind } from '../src/lib/shapes.ts'
-import { renderSvg } from '../src/lib/svg.ts'
-import { orderStrokes, traceImage } from '../src/lib/trace.ts'
-import { fitStrokes } from '../src/lib/page.ts'
+import { canvasFor, formatByKey } from '@/lib/page'
+import { renderPdf } from '@/lib/pdf'
+import { compose } from '@/lib/pipeline'
+import { DEFAULT_SETTINGS, type Settings } from '@/lib/settings'
+import { SHAPES, type ShapeKind } from '@/lib/shapes'
+import { strokesFor } from '@/lib/source'
+import { renderSvg } from '@/lib/svg'
 import { star } from './drawing.ts'
-import type { Stroke } from '../src/lib/types.ts'
 
 interface Case {
   name: string
@@ -53,26 +51,13 @@ const rows: string[][] = [
 for (const testCase of CASES) {
   const settings: Settings = { ...DEFAULT_SETTINGS, ...testCase.settings }
   const canvas = canvasFor(formatByKey(settings.formatKey))
-  const box = canvas.inset
 
-  let strokes: Stroke[]
-  if (testCase.drawing) {
-    const traced = traceImage(DRAWING.gray, DRAWING.width, DRAWING.height, {
-      mode: settings.traceMode,
-      threshold: settings.threshold,
-      minBlobArea: settings.minBlobArea,
-      pruneSpursBelow: settings.pruneSpursBelow,
-    })
-    strokes = orderStrokes(fitStrokes(traced, canvas), toPixels(settings.minLengthMm))
-  } else {
-    strokes = [
-      buildShape(settings.shape, box, {
-        corner: toPixels(settings.cornerMm),
-        turns: settings.turns,
-        teeth: settings.teeth,
-      }),
-    ]
-  }
+  // La même fonction que l'interface. Le harnais en tenait une copie ligne pour
+  // ligne : mesurer autre chose que ce que l'application produit est le seul défaut
+  // qu'un harnais ne peut pas détecter lui-même.
+  const strokes = strokesFor(testCase.drawing ? 'dessin' : 'forme', settings, canvas, {
+    image: DRAWING,
+  })
 
   // Une passe à blanc avant de chronométrer : sans elle on mesure surtout la
   // compilation du moteur par le moteur JavaScript, ce qui gonflait les premiers

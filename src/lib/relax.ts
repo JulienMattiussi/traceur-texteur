@@ -1,4 +1,5 @@
-import { cellKey, curvatures, resample, tangentAngles } from '@/lib/geometry'
+import { curvatures, resample, tangentAngles, wrapIndex } from '@/lib/geometry'
+import { buildCellGrid } from '@/lib/grid'
 import type { Point } from '@/lib/types'
 
 /**
@@ -54,6 +55,13 @@ const STRENGTH = 0.35
  */
 const PROGRESS = 0.995
 
+/**
+ * Côté de la grille qui sert à mesurer l'écart au tracé d'origine, en pixels. Il
+ * fixe la portée d'un anneau de recherche : assez large pour trouver un voisin du
+ * premier coup, assez étroit pour ne pas ramener la moitié du dessin.
+ */
+const CELL = 32
+
 export function relaxCurvature(
   points: Point[],
   closed: boolean,
@@ -102,8 +110,8 @@ export function relaxCurvature(
       if (excess <= 0) continue
       const weight = STRENGTH * Math.min(1, excess)
 
-      const before = current[at(i, -window, count, closed)]!
-      const after = current[at(i, window, count, closed)]!
+      const before = current[wrapIndex(i, -window, count, closed)]!
+      const after = current[wrapIndex(i, window, count, closed)]!
       const point = current[i]!
 
       // Vers le milieu des deux voisins à la distance de la fenêtre, et non des
@@ -148,21 +156,18 @@ export function relaxCurvature(
  * les indices ne désignent plus le même endroit de la courbe.
  */
 function deviation(points: Point[], reference: Point[]): number {
-  const cell = 32
-  const buckets = new Map<number, Point[]>()
-
-  for (const point of reference) {
-    const key = cellKey(Math.floor(point.x / cell), Math.floor(point.y / cell))
-    const bucket = buckets.get(key)
-    if (bucket) bucket.push(point)
-    else buckets.set(key, [point])
-  }
+  const grid = buildCellGrid(
+    reference.length,
+    CELL,
+    (index) => reference[index]!.x,
+    (index) => reference[index]!.y,
+  )
 
   let worst = 0
 
   for (const point of points) {
-    const cellX = Math.floor(point.x / cell)
-    const cellY = Math.floor(point.y / cell)
+    const cellX = grid.columnOf(point.x)
+    const cellY = grid.columnOf(point.y)
     let best = Infinity
 
     // Un anneau à la fois, en s'arrêtant dès qu'un voisin trouvé est plus proche
@@ -172,23 +177,19 @@ function deviation(points: Point[], reference: Point[]): number {
       for (let dx = -ring; dx <= ring; dx++) {
         for (let dy = -ring; dy <= ring; dy++) {
           if (ring > 0 && Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue
-          const bucket = buckets.get(cellKey(cellX + dx, cellY + dy))
+          const bucket = grid.bucketAt(cellX + dx, cellY + dy)
           if (!bucket) continue
-          for (const other of bucket) {
+          for (const index of bucket) {
+            const other = reference[index]!
             best = Math.min(best, Math.hypot(other.x - point.x, other.y - point.y))
           }
         }
       }
-      if (best <= ring * cell) break
+      if (best <= ring * CELL) break
     }
 
     if (best !== Infinity && best > worst) worst = best
   }
 
   return worst
-}
-
-function at(index: number, offset: number, count: number, closed: boolean): number {
-  if (closed) return (((index + offset) % count) + count) % count
-  return Math.max(0, Math.min(count - 1, index + offset))
 }

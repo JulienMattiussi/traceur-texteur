@@ -1,5 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}", "tools/**/*.ts"],
-  "ignoreBinaries": ["google-chrome"]
+  "ignoreBinaries": ["google-chrome"],
+  "include": [
+    "files",
+    "dependencies",
+    "unlisted",
+    "binaries",
+    "unresolved",
+    "exports",
+    "types",
+    "duplicates"
+  ]
 }

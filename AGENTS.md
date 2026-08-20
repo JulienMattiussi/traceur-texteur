@@ -62,6 +62,8 @@ src/
 │   ├── page.ts               # Formats, marges, mm <-> pixels, cadrage
 │   ├── settings.ts           # Réglages exposés à l'interface
 │   ├── geometry.ts           # Rééchantillonnage, tangentes, courbure, interpolation
+│   ├── grid.ts               # Index spatial : ne comparer que les voisins proches
+│   ├── source.ts             # Les trois sources -> un seul jeu de tracés cadrés
 │   ├── shapes.ts             # Formes de base et arrondi des angles
 │   ├── smooth.ts             # Lissage d'un tracé fait à la main
 │   ├── binarize.ts           # Otsu + seuillage + despeckle  (porté)
@@ -118,8 +120,17 @@ tests/
 - **`fonts.ts`, `favicon.svg` et `og.png` sont générés.** Ne pas les éditer à la
   main : `make afm`, `make favicon` et `make og`.
 - **Une seule source pour chaque grandeur.** `page.ts` pour les tailles de page,
-  `metrics.ts` pour les mesures de texte, `logo.ts` pour la marque. Chaque fois
-  qu'une valeur a été dupliquée dans ce projet, les deux copies ont divergé.
+  `metrics.ts` pour les mesures de texte, `logo.ts` pour la marque, `source.ts` pour
+  la façon dont les trois sources deviennent des tracés. Chaque fois qu'une valeur a
+  été dupliquée dans ce projet, les deux copies ont divergé.
+- **Un seul endroit sait qu'il existe trois sources**, `source.ts`, et il ne touche
+  pas à React : le composant s'en servait comme d'une logique interne, et le harnais
+  de mesure en tenait une copie ligne pour ligne. Un harnais qui mesure autre chose
+  que ce que l'application produit est inutile, et c'est le seul défaut qu'il ne peut
+  pas détecter lui-même.
+- **`tools/` importe avec l'alias `@/`**, comme `src/`. Les chemins relatifs y
+  marchaient, mais knip ne les résolvait pas : quatre exports morts sont ainsi passés
+  inaperçus.
 - **Viser moins de 300 lignes par fichier.**
 
 ---
@@ -498,6 +509,16 @@ deux sortent de `src/lib/logo.ts` via `spiralPoints`.
   (`tests/fixtures.ts`) plutôt que sur des images : c'est déterministe, sans
   fichier binaire dans git, et surtout **on connaît la réponse exacte**. Un cercle
   de rayon connu a une courbure connue.
+- **`src/platform` est testé avec un canvas simulé.** jsdom n'implémente ni
+  `createImageBitmap` ni le contexte 2D. Le but n'est pas de tester le décodage JPEG,
+  qui appartient au navigateur, mais ce qui nous appartient : la réduction d'échelle,
+  le fond blanc sous une image transparente, et la libération des URL d'objet. C'est
+  le seul code du projet dont une erreur ne se verrait nulle part ailleurs, et il est
+  resté longtemps à 2 % de couverture.
+- **`make knip` contrôle bien les exports morts**, mais seulement depuis qu'une liste
+  `include` explicite est dans `knip.json` : par défaut il n'en signalait aucun, et la
+  règle ci-dessus n'était donc pas appliquée. Pour s'en assurer, planter un export
+  inutilisé et vérifier que knip le voit.
 - **Vérifier contre la géométrie, jamais contre une capture du résultat.** La
   courbure d'un cercle vaut `1/r`, la correction d'avance vaut le rapport des
   rayons, les décalages `xref` du PDF se relisent dans le fichier produit.

@@ -13,7 +13,7 @@
  *   make favicon
  */
 import { writeFileSync } from 'node:fs'
-import { ICON_SPIRAL, ICON_STROKE, LOGO_BOX, spiralPoints } from '../src/lib/logo.ts'
+import { ICON_SPIRAL, ICON_STROKE, LOGO_BOX, spiralPoints } from '@/lib/logo'
 
 const INK = '#5eead4'
 const BACKGROUND = '#0f172a'
