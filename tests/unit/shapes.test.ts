@@ -7,9 +7,9 @@ const OPTIONS: ShapeOptions = { corner: 32, turns: 7, teeth: 6 }
 
 /** Courbure maximale d'un tracé, mesurée comme le fait le pipeline. */
 function peakCurvature(points: { x: number; y: number }[], closed: boolean): number {
-  const { points: sampled, step } = resample(points, closed, 2)
+  const { points: sampled } = resample(points, closed, 2)
   const angles = tangentAngles(sampled, 6, closed)
-  const measured = curvatures(angles, step, 12, closed)
+  const measured = curvatures(sampled, angles, 12, closed)
   return Math.max(...measured.map(Math.abs))
 }
 
@@ -91,10 +91,9 @@ describe('buildShape', () => {
     for (const kind of ['rectangle', 'triangle', 'zigzag'] as const) {
       const sharp = buildShape(kind, BOX, { ...OPTIONS, corner: 0 })
       const rounded = buildShape(kind, BOX, { ...OPTIONS, corner: 40 })
-      expect(
-        peakCurvature(rounded.points, rounded.closed),
-        kind,
-      ).toBeLessThan(peakCurvature(sharp.points, sharp.closed))
+      expect(peakCurvature(rounded.points, rounded.closed), kind).toBeLessThan(
+        peakCurvature(sharp.points, sharp.closed),
+      )
     }
   })
 })

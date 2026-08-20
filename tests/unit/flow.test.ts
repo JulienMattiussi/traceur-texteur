@@ -3,13 +3,7 @@ import { fitOnce } from '@/lib/fit'
 import { flowText, type FlowOptions } from '@/lib/flow'
 import { HELVETICA } from '@/lib/fonts'
 import { measureClearances } from '@/lib/clearance'
-import {
-  curvatures,
-  resample,
-  sampledLength,
-  tangentAngles,
-  wrapAngle,
-} from '@/lib/geometry'
+import { curvatures, resample, sampledLength, tangentAngles, wrapAngle } from '@/lib/geometry'
 import { advanceOf, bandHeight } from '@/lib/metrics'
 import { countOverlaps } from '@/lib/quality'
 import { sizeField } from '@/lib/sizing'
@@ -30,7 +24,7 @@ function build(stroke: Stroke, clearance: number, step = 1): Ribbon {
   return {
     points,
     angles,
-    curvatures: curvatures(angles, actual, 4, stroke.closed),
+    curvatures: curvatures(points, angles, 4, stroke.closed),
     clearances: points.map(() => clearance),
     step: actual,
     length: sampledLength(points.length, actual, stroke.closed),
@@ -112,9 +106,7 @@ describe('flowText', () => {
     // bande d'encre est centrée dessus), donc leur corde ne mesure pas l'arc
     // parcouru sur le tracé.
     const swept = Math.abs(
-      wrapAngle(
-        Math.atan2(glyphs[2]!.y, glyphs[2]!.x) - Math.atan2(glyphs[1]!.y, glyphs[1]!.x),
-      ),
+      wrapAngle(Math.atan2(glyphs[2]!.y, glyphs[2]!.x) - Math.atan2(glyphs[1]!.y, glyphs[1]!.x)),
     )
     const arc = swept * radius
     const flat = advanceOf(HELVETICA, 'n', size)

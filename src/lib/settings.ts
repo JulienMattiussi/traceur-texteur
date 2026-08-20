@@ -28,6 +28,12 @@ export interface Settings {
   minSizeMm: number
   /** Part du couloir disponible que le texte occupe. Sous 1, il reste de l'air. */
   fillRatio: number
+  /**
+   * Élargir les virages trop serrés pour porter le corps minimal, plutôt que d'y
+   * rétrécir le texte ou de les enjamber. Le tracé s'écarte alors un peu du dessin
+   * dans les angles, et `stats.roundedMm` dit de combien.
+   */
+  roundCorners: boolean
 
   /** Réglages de forme. */
   shape: ShapeKind
@@ -55,8 +61,12 @@ export const DEFAULT_SETTINGS: Settings = {
   tracking: 0,
 
   maxSizeMm: 7,
-  minSizeMm: 1.2,
+  // 2,5 mm plutôt que 1,2 : en dessous, le texte est mesurable mais pas lisible, et
+  // le laisser descendre si bas était le vrai défaut. Les virages serrés sont
+  // maintenant élargis, donc ce plancher ne coûte presque plus de couverture.
+  minSizeMm: 2.5,
   fillRatio: 0.85,
+  roundCorners: true,
 
   shape: 'spirale',
   turns: 7,

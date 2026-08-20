@@ -71,6 +71,7 @@ src/
 │   ├── graph-cleanup.ts      # Barbules, micro-boucles, faux sommets (porté)
 │   ├── trace.ts              # Dessin -> tracés : contour ou squelette
 │   ├── clearance.ts          # LE COEUR : combien de place le tracé laisse-t-il ?
+│   ├── relax.ts              # Élargit les virages trop serrés pour du texte lisible
 │   ├── sizing.ts             # Champ de tailles : deux plafonds et un lissage
 │   ├── flow.ts               # Pose des glyphes le long du tracé
 │   ├── fit.ts                # Dichotomie du mode « une seule fois »
@@ -99,6 +100,7 @@ src/
 tools/                        # Tournent sous Node (pas livrés)
 ├── afm.ts                    # Régénère src/lib/fonts.ts depuis les AFM
 ├── favicon.ts                # Régénère public/favicon.svg depuis src/lib/logo.ts
+├── og.ts                     # Régénère public/og.png : une vraie composition
 ├── drawing.ts                # Dessin au trait de synthèse, pour le mode « dessin »
 └── bench.ts                  # Mesure les cas de référence, écrit out/
 tests/
@@ -113,8 +115,8 @@ tests/
   vit dans `src/platform`. C'est ce qui permet de tester le moteur entier sans
   navigateur, et de le faire tourner tel quel sous Node dans `tools/`.
 - **`types.ts` est une feuille** : il n'importe rien.
-- **`fonts.ts` et `favicon.svg` sont générés.** Ne pas les éditer à la main :
-  `make afm` et `make favicon`.
+- **`fonts.ts`, `favicon.svg` et `og.png` sont générés.** Ne pas les éditer à la
+  main : `make afm`, `make favicon` et `make og`.
 - **Une seule source pour chaque grandeur.** `page.ts` pour les tailles de page,
   `metrics.ts` pour les mesures de texte, `logo.ts` pour la marque. Chaque fois
   qu'une valeur a été dupliquée dans ce projet, les deux copies ont divergé.
@@ -128,13 +130,14 @@ tests/
 forme | dessin | souris
   └─0─ fitStrokes    cadre tout dans la page          -> un seul repère
   └─1─ resample      pas constant qui divise la longueur -> abscisse = index
-  └─2─ tangentes     lissées sur 1,5 mm                 -> direction du texte
-  └─3─ courbure      lissée sur 3 mm                    -> rayon des virages
-  └─4─ clearance     place libre autour du tracé        -> champ de distance
-  └─5─ sizeField     min(place, virage), puis lissé     -> un corps par point
-  └─6─ flow / fit    un caractère après l'autre         -> glyphes placés
-  └─7─ quality       boîtes orientées                   -> chevauchements = 0
-  └─8─ svg / pdf     export
+  └─2─ relax         ouvre les virages trop serrés      -> courbure bornée
+  └─3─ tangentes     lissées sur 1,5 mm                 -> direction du texte
+  └─4─ courbure      arc réel, lissée sur 3 mm          -> rayon des virages
+  └─5─ clearance     place libre autour du tracé        -> champ de distance
+  └─6─ sizeField     min(place, virage), puis lissé     -> un corps par point
+  └─7─ flow / fit    un caractère après l'autre         -> glyphes placés
+  └─8─ quality       boîtes orientées                   -> chevauchements = 0
+  └─9─ svg / pdf     export
 ```
 
 ### 1. Le pas doit diviser la longueur
@@ -225,11 +228,54 @@ d'encre est centrée dessus.
 Là où même le corps minimal ne tiendrait pas, le moteur **ne écrit rien** et
 enjambe. C'est le seul endroit qui renonce, et il le fait explicitement : écrire au
 plancher dans un couloir plus étroit produirait des lettres empilées, donc fausses.
-La longueur sautée est comptée (`stats.skippedMm`) et l'interface l'affiche. Sur un
-zigzag à six dents, les pointes coûtent 292 mm sur 3,3 m, et les chevauchements
-passent de 226 à zéro.
+La longueur sautée est comptée (`stats.skippedMm`) et l'interface l'affiche.
 
-### 7. Les métriques de police sont une table, pas une mesure
+Le plancher vaut **2,5 mm** et non 1,2 comme au départ. En dessous, le texte est
+encore mesurable mais plus lisible, et le laisser descendre si bas était le vrai
+défaut : sur une boucle à quatre pointes, **un tiers des lettres tombait sous
+2,5 mm**, jusqu'à 1,3 mm, ce qui produit une traînée et non un mot.
+
+### 7. Élargir le virage plutôt que rétrécir le texte
+
+Enjamber garde le tracé exact mais laisse des trous et coupe les mots. Il existe une
+autre sortie, qui retourne le problème : au lieu de rétrécir le texte pour tenir dans
+le virage, **élargir le virage pour tenir le texte** (`relax.ts`). C'est le réglage
+*Angles trop serrés* de l'interface, et c'est le défaut.
+
+Le critère n'est pas esthétique mais une conséquence du plancher : on ouvre juste
+assez pour que la courbure ne dicte jamais un corps inférieur à lui, soit un rayon
+d'au moins `2 x bande(corps minimal)`. Ce n'est pas non plus une nouveauté, c'est une
+généralisation : les formes de base arrondissent déjà leurs angles pour exactement
+cette raison, et un dessin déposé ou un geste à la souris n'y avaient pas droit.
+
+Mesuré sur la même boucle à quatre pointes, à corps minimal égal :
+
+| | lettres | sous 2,5 mm | tracé nu | écart au dessin |
+|---|---:|---:|---:|---:|
+| rétrécir (l'ancien défaut) | 377 | **130** | 0 mm | 0 mm |
+| enjamber | 244 | 0 | 125 mm | 0 mm |
+| **élargir** | 261 | **0** | **48 mm** | 2,3 mm |
+
+L'écart au dessin est mesuré (`stats.roundedMm`) et affiché, comme tout ce que le
+moteur retouche.
+
+Deux pièges, tous deux mesurés :
+
+- **Il faut rééchantillonner à chaque passe.** Ouvrir un virage y resserre les
+  points. Sans rééchantillonnage, la courbure calculée en divisant par `fenêtre x
+  pas` sous-estime les virages (mesuré : la boucle s'arrêtait à 0,054 en croyant
+  avoir atteint 0,043), et surtout le lissage se met à agir à une échelle de plus en
+  plus petite et cesse d'ouvrir quoi que ce soit. C'est aussi pourquoi
+  `curvatures` divise par l'**arc réellement mesuré** et non par un pas supposé.
+- **Le coût doit être borné par un budget, pas par le nombre de passes.** Chaque
+  passe coûte le tracé entier alors que le défaut est local : sur une spirale de
+  vingt-cinq tours, 27 échantillons sur 19 213 dépassaient la cible, et les ouvrir
+  coûtait 377 ms pour ne récupérer que 25 mm de texte. `RELAX_BUDGET` borne le total
+  de passes par la longueur du tracé, ce qui rend le coût à peu près constant quelle
+  que soit la taille du dessin. S'y ajoute une rupture sur stagnation : certains
+  tracés ne peuvent pas s'ouvrir sans cesser d'être eux-mêmes.
+
+### 8. Les métriques de police sont une table, pas une mesure
 
 `canvas.measureText` aurait été plus souple mais donne un résultat dépendant des
 polices installées sur le poste, alors que le PDF, lui, est écrit avec les métriques
@@ -250,14 +296,14 @@ caractères en Times.
 
 | Cas | Tracés | Glyphes | Répét. | Couverture | Corps (mm) | Enjambé | Chevauch. | Temps |
 |---|---:|---:|---:|---:|---|---:|---:|---:|
-| spirale (7 tours) | 1 | 835 | 10,8 | 100 % | 4,5 à 7,0 | 0 | **0** | 36 ms |
-| spirale (20 tours) | 1 | 4169 | 54,1 | 100 % | 1,9 à 4,8 | 0 | **0** | 63 ms |
-| cercle | 1 | 214 | 2,8 | 100 % | 7,0 | 0 | **0** | 10 ms |
-| rectangle | 1 | 339 | 4,4 | 100 % | 2,8 à 7,0 | 0 | **0** | 7 ms |
-| triangle | 1 | 332 | 4,3 | 100 % | 1,2 à 7,0 | 3 mm | **0** | 6 ms |
-| zigzag (6 dents) | 1 | 1415 | 18,4 | 91 % | 1,2 à 7,0 | 292 mm | **0** | 28 ms |
-| dessin, contour | 1 | 539 | 7,0 | 89 % | 1,2 à 4,5 | 80 mm | **0** | 33 ms |
-| dessin, squelette | 4 | 517 | 6,7 | 81 % | 1,2 à 4,3 | 129 mm | **0** | 40 ms |
+| spirale (7 tours) | 1 | 835 | 10,8 | 100 % | 4,5 à 7,0 | 0 | **0** | 26 ms |
+| spirale (20 tours) | 1 | 4158 | 54,0 | 100 % | 2,6 à 4,8 | 14 mm | **0** | 143 ms |
+| cercle | 1 | 215 | 2,8 | 100 % | 7,0 | 0 | **0** | 5 ms |
+| rectangle | 1 | 339 | 4,4 | 100 % | 2,8 à 7,0 | 0 | **0** | 9 ms |
+| triangle | 1 | 273 | 3,5 | 95 % | 2,5 à 7,0 | 33 mm | **0** | 20 ms |
+| zigzag (6 dents) | 1 | 985 | 12,8 | 80 % | 2,5 à 7,0 | 651 mm | **0** | 32 ms |
+| dessin, contour | 1 | 325 | 4,2 | 82 % | 2,6 à 4,7 | 122 mm | **0** | 12 ms |
+| dessin, squelette | 4 | 277 | 3,6 | 69 % | 2,6 à 4,9 | 205 mm | **0** | 7 ms |
 
 Les deux derniers cas partent d'une **étoile à cinq branches** dessinée par
 `tools/drawing.ts` : une image de synthèse plutôt qu'une photo, pour la même raison
@@ -267,10 +313,16 @@ sans dépendre du décodeur d'images du navigateur, qui est la seule pièce que
 `src/lib` ne contient pas. Ses pointes serrées et ses longs côtés droits font jouer
 les deux plafonds de taille l'un après l'autre.
 
-**Le bon réglage** : environ **7 mm de corps maximal et 85 % de remplissage**. Le
-vérifier à l'oeil est indispensable, les chiffres seuls trompent : zéro
+**Le bon réglage** : environ **7 mm de corps maximal, 2,5 mm de corps minimal et
+85 % de remplissage**, avec l'élargissement des angles actif. Le vérifier à l'oeil
+est indispensable, les chiffres seuls trompent, et de deux façons : zéro
 chevauchement n'empêche pas un texte de tourner la tête en bas sur la moitié d'un
-cercle, ce qui est inhérent au procédé.
+cercle, ce qui est inhérent au procédé ; et il n'empêchait pas non plus, avant que le
+plancher ne monte, un tiers des lettres d'être trop petites pour être lues.
+
+Le zigzag est le cas qui coûte le plus cher à ce plancher : ses pointes passent de
+292 mm enjambés à **651 mm**, soit 80 % de couverture. C'est le prix honnête d'un
+texte lisible dans une dent trop étroite pour en porter.
 
 ### Optimisations qui ont compté
 
@@ -283,6 +335,11 @@ les curseurs inutilisables. Deux changements l'ont ramenée à **63 ms** :
 - **Pas d'échantillonnage à 0,5 mm** au lieu de 0,25 mm. Le coût de la place libre
   est quadratique en densité d'échantillons, et plus fin ne mesure rien de plus :
   tangente et courbure sont de toute façon lissées sur plusieurs millimètres.
+
+L'élargissement des angles l'a ensuite remontée à **143 ms**, et c'est là qu'il
+coûte le plus cher pour ce qu'il rapporte : voir `RELAX_BUDGET`, qui borne
+justement cette dépense. Les cas où il sert vraiment, un dessin ou un geste à la
+souris, restent sous les 30 ms.
 
 ### Limites connues
 
@@ -297,6 +354,14 @@ les curseurs inutilisables. Deux changements l'ont ramenée à **63 ms** :
   carré parfait à un seul pixel. C'est une propriété de l'amincissement, pas un
   défaut d'implémentation, mais ça veut dire que le mode squelette ne convient qu'aux
   dessins au trait.
+- **Élargir un angle trahit le dessin.** L'écart est petit et mesuré
+  (`stats.roundedMm`, de l'ordre de 2 mm sur une boucle à pointes), mais il existe :
+  un triangle aux angles vifs ressort avec des angles arrondis. Qui veut le tracé
+  exact bascule le réglage sur *Laisser nu*.
+- **Un angle ne s'ouvre pas si son voisinage est déjà encombré.** Élargir déplace le
+  tracé vers ce qui l'entoure ; là où la place libre est déjà la contrainte
+  dominante, c'est elle qui décide et l'élargissement ne rend rien. C'est le cas du
+  centre d'une spirale très serrée.
 - **Le mode « une seule fois » ne peut que réduire.** Si le message est trop court
   pour le tracé, il ne peut pas être agrandi sans violer la place libre : la fin du
   tracé reste nue et `coverage` le dit, plutôt que de faire semblant.
@@ -369,8 +434,35 @@ publique.
 **Changer d'hébergeur veut dire changer cette ligne**, sinon l'aperçu affiche un
 titre et une description corrects avec une image cassée.
 
-`public/og.png` n'est pas encore produit : à faire sur le modèle de
-traceur-compteur, avec un `tools/og.ts` qui calcule une vraie composition.
+L'image elle-même, `public/og.png` (1200x630), est produite par **`make og`**. Ce
+n'est pas une maquette : la spirale est une vraie composition calculée par le moteur
+avec les réglages de l'application. Une image dessinée à la main finirait par
+promettre autre chose que ce que le produit fait, et personne ne s'en apercevrait.
+Elle est **versionnée**, parce qu'un robot la demande au déploiement et qu'elle ne
+peut pas être calculée à ce moment-là.
+
+Le titre est posé **à côté** de la spirale et non par-dessus : une vignette de
+partage s'affiche souvent sur trois cents pixels de large, où le texte de la spirale
+n'est plus qu'une texture. Ce qui doit survivre à cette taille, c'est le nom.
+
+À vérifier après déploiement :
+
+```sh
+curl -sI https://traceur-texteur.vercel.app/og.png | head -2   # 200 image/png
+curl -s https://traceur-texteur.vercel.app/ | grep 'og:image'  # même hôte
+```
+
+En plus des balises, `index.html` porte un bloc **JSON-LD** `WebApplication` : il dit
+aux moteurs que c'est une application qui tourne dans le navigateur et qu'elle est
+gratuite, ce qu'aucune balise classique n'exprime.
+
+### L'icône est la spirale seule
+
+La marque du site porte le mot `Texte` sur le tour extérieur d'une spirale. L'icône,
+elle, n'en garde que **la spirale**, avec moins de tours et un trait plus épais : un
+onglet fait seize pixels de côté, où les cinq lettres devenaient quatre taches
+grises. C'est la même figure réduite à ce qui survit, pas une autre marque, et les
+deux sortent de `src/lib/logo.ts` via `spiralPoints`.
 
 ## Contraintes techniques
 
@@ -398,7 +490,8 @@ traceur-compteur, avec un `tools/og.ts` qui calcule une vraie composition.
 - **Commentaires utiles seulement** : expliquer le pourquoi / le non-évident ;
   ne jamais paraphraser le code.
 - **Rien ne disparaît en silence** : quand le moteur enjambe une portion, il la
-  compte (`skippedMm`, `cramped`) et l'UI l'affiche.
+  compte (`skippedMm`, `cramped`) et l'UI l'affiche. Quand il élargit un virage, il
+  dit de combien il s'écarte du dessin (`roundedMm`).
 
 ### Tests
 - **Logique pure entièrement testée** (`src/lib/`), sur des tracés synthétiques
@@ -408,6 +501,12 @@ traceur-compteur, avec un `tools/og.ts` qui calcule une vraie composition.
 - **Vérifier contre la géométrie, jamais contre une capture du résultat.** La
   courbure d'un cercle vaut `1/r`, la correction d'avance vaut le rapport des
   rayons, les décalages `xref` du PDF se relisent dans le fichier produit.
+- **Aucune assertion en millisecondes dans la suite.** Elle mesurerait la machine :
+  seize fichiers de tests tournent en parallèle, et le même calcul y est passé de
+  216 ms à 4733 ms sans qu'une ligne de moteur change. Le temps se mesure par
+  `make bench`, qui chauffe le code et traite un cas à la fois ; la suite, elle,
+  vérifie que le pire cas ne dégénère pas (zéro chevauchement, couverture, écart au
+  dessin borné).
 - Les invariants qui comptent : la place libre est exacte entre deux parallèles,
   la porte reste au-dessus du plafond, le lissage n'augmente jamais une taille, les
   boîtes de lettres ne se recouvrent pas, un caractère de la source vaut un octet
@@ -437,4 +536,5 @@ Tout passe par le Makefile.
 | `make fix` | Formate puis lint |
 | `make afm` | Régénère `src/lib/fonts.ts` depuis les AFM d'URW base35 |
 | `make favicon` | Régénère `public/favicon.svg` depuis `src/lib/logo.ts` |
+| `make og` | Régénère `public/og.png` (nécessite google-chrome) |
 | `make bench` | Mesure les cas de référence et écrit `out/` |

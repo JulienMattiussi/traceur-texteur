@@ -74,6 +74,11 @@ for (const testCase of CASES) {
     ]
   }
 
+  // Une passe à blanc avant de chronométrer : sans elle on mesure surtout la
+  // compilation du moteur par le moteur JavaScript, ce qui gonflait les premiers
+  // cas d'un facteur dix et rendait le tableau incomparable d'une ligne à l'autre.
+  compose(strokes, canvas, settings)
+
   const started = performance.now()
   const composition = compose(strokes, canvas, settings)
   const elapsed = performance.now() - started

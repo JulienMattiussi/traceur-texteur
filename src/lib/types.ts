@@ -98,6 +98,11 @@ interface CompositionStats {
   coverage: number
   /** Longueur enjambée faute de place, en millimètres imprimés. */
   skippedMm: number
+  /**
+   * Écart maximal, en millimètres imprimés, entre le tracé suivi et celui reçu.
+   * Non nul quand des virages ont été élargis pour porter du texte lisible.
+   */
+  roundedMm: number
   /** Corps de police retenus, en millimètres imprimés. */
   minSizeMm: number
   maxSizeMm: number

@@ -16,9 +16,9 @@ function shaky(length: number, wobble: number): Point[] {
  * reviendrait à juger le lissage sur les deux seuls points qu'il ne touche pas.
  */
 function peakCurvature(points: Point[], closed: boolean): number {
-  const { points: sampled, step } = resample(points, closed, 1)
+  const { points: sampled } = resample(points, closed, 1)
   const angles = tangentAngles(sampled, 4, closed)
-  const measured = curvatures(angles, step, 6, closed).map(Math.abs)
+  const measured = curvatures(sampled, angles, 6, closed).map(Math.abs)
   return Math.max(...(closed ? measured : measured.slice(10, -10)))
 }
 
@@ -57,7 +57,10 @@ describe('smoothPoints', () => {
   })
 
   it('ne touche à rien sous trois points', () => {
-    const two = [{ x: 0, y: 0 }, { x: 10, y: 10 }]
+    const two = [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ]
     expect(smoothPoints(two, false, 5)).toEqual(two)
   })
 })

@@ -19,6 +19,7 @@
     "test:coverage": "vitest run --coverage",
     "afm": "vite-node tools/afm.ts",
     "favicon": "vite-node tools/favicon.ts",
+    "og": "vite-node tools/og.ts",
     "bench": "vite-node tools/bench.ts"
   },
   "dependencies": {

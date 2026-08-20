@@ -117,12 +117,23 @@ describe('compose', () => {
     expect(stats.overlaps).toBe(0)
   })
 
-  it('reste sous la demi-seconde sur le cas le plus lourd', () => {
-    // Bouger un curseur doit rester interactif : la spirale de vingt tours est le
-    // pire cas atteignable depuis l'interface.
-    const started = performance.now()
-    run({ shape: 'spirale', turns: 25 })
-    expect(performance.now() - started).toBeLessThan(500)
+  it('traite le cas le plus lourd sans dégénérer', () => {
+    // La spirale de vingt-cinq tours est le pire cas atteignable depuis l'interface,
+    // avec près de vingt mille échantillons. Ce qui est vérifié ici, c'est que le
+    // moteur y tient toutes ses promesses, pas qu'il y soit rapide.
+    //
+    // Le temps de calcul se mesure par `make bench`, qui chauffe le code avant de
+    // chronométrer et traite un cas à la fois. Une assertion en millisecondes ici
+    // mesurerait surtout la machine : sous seize fichiers de tests en parallèle, ce
+    // même calcul est passé de 216 ms à 4733 ms sans qu'une ligne de moteur change.
+    const { stats } = run({ shape: 'spirale', turns: 25 })
+
+    expect(stats.overlaps).toBe(0)
+    expect(stats.glyphs).toBeGreaterThan(3000)
+    expect(stats.coverage).toBeGreaterThan(0.95)
+    // Le relâchement des virages ne détruit pas la spirale : il l'ouvre de moins
+    // d'un pas entre deux tours.
+    expect(stats.roundedMm).toBeLessThan(3)
   })
 
   it('mémorise les mesures utiles au diagnostic', () => {

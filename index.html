@@ -3,50 +3,83 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Les robots des réseaux sociaux ne lisent que ce fichier : ils n'exécutent
+      aucun script. Tout ce qui suit doit donc être statique, et les URL absolues,
+      d'où `%VITE_SITE_URL%` que Vite substitue au moment du build. Voir AGENTS.md.
+    -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./favicon.svg" />
     <link rel="canonical" href="%VITE_SITE_URL%/" />
     <meta name="theme-color" content="#0f172a" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="YavaDeus" />
+    <meta name="application-name" content="Traceur-texteur" />
 
     <title>Traceur-texteur | Écrire un message le long d'un tracé</title>
     <meta
       name="description"
-      content="Transforme un message en image : le texte suit une spirale, une forme, un dessin ou un tracé fait à la main, et sa taille s'adapte à la place libre pour qu'aucune lettre n'en recouvre une autre. Tout se calcule dans le navigateur, export PNG, SVG et PDF."
+      content="Écrivez un message le long d'une spirale, d'une forme, d'un dessin ou d'un trait fait à la souris. La taille des lettres suit la place réellement disponible, si bien qu'aucune n'en recouvre une autre. Tout se calcule dans le navigateur, export PNG, SVG et PDF prêt à imprimer."
     />
     <meta
       name="keywords"
-      content="texte sur chemin, texte le long d'un tracé, spirale de texte, calligramme, typographie, générateur, PDF, imprimable"
+      content="texte le long d'un tracé, texte sur chemin, spirale de texte, calligramme, textPath, typographie, affiche, générateur, PDF imprimable, SVG"
     />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Traceur-texteur" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:url" content="%VITE_SITE_URL%/" />
-    <meta
-      property="og:title"
-      content="Traceur-texteur : un message écrit le long d'un tracé"
-    />
+    <meta property="og:title" content="Traceur-texteur : un message écrit le long d'un tracé" />
     <meta
       property="og:description"
-      content="Le texte suit la courbe et change de corps avec la place disponible. Aucune lettre n'en recouvre une autre, et c'est mesuré plutôt que supposé."
+      content="Le texte suit la courbe et change de corps avec la place disponible, pour qu'aucune lettre n'en recouvre une autre. Mesuré, pas supposé."
     />
     <meta property="og:image" content="%VITE_SITE_URL%/og.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="Une spirale de texte dont les lettres rétrécissent vers le centre."
+      content="Une spirale de texte dont les lettres rétrécissent à mesure que les tours se resserrent."
     />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta
-      name="twitter:title"
-      content="Traceur-texteur : un message écrit le long d'un tracé"
-    />
+    <meta name="twitter:title" content="Traceur-texteur : un message écrit le long d'un tracé" />
     <meta
       name="twitter:description"
-      content="Le texte suit la courbe et change de corps avec la place disponible. Aucune lettre n'en recouvre une autre."
+      content="Le texte suit la courbe et change de corps avec la place disponible, pour qu'aucune lettre n'en recouvre une autre."
     />
     <meta name="twitter:image" content="%VITE_SITE_URL%/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Une spirale de texte dont les lettres rétrécissent à mesure que les tours se resserrent."
+    />
+
+    <!--
+      Données structurées : elles disent aux moteurs que c'est une application qui
+      tourne dans le navigateur et qu'elle est gratuite, ce qu'aucune balise
+      classique n'exprime.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Traceur-texteur",
+        "url": "%VITE_SITE_URL%/",
+        "description": "Écrit un message le long d'un tracé en faisant varier la taille des lettres avec la place réellement disponible, pour qu'aucune n'en recouvre une autre.",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Tout navigateur moderne",
+        "inLanguage": "fr",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "author": { "@type": "Person", "name": "YavaDeus" },
+        "license": "https://opensource.org/licenses/MIT",
+        "screenshot": "%VITE_SITE_URL%/og.png"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

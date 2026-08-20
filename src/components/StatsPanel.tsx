@@ -29,7 +29,9 @@ export function StatsPanel({ composition }: { composition: Composition }) {
       <div
         role="status"
         className={`flex items-start gap-2 rounded-lg px-2.5 py-2 text-xs leading-snug ring-1 ${
-          clean ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : 'bg-amber-50 text-amber-900 ring-amber-200'
+          clean
+            ? 'bg-emerald-50 text-emerald-900 ring-emerald-200'
+            : 'bg-amber-50 text-amber-900 ring-amber-200'
         }`}
       >
         <span aria-hidden="true" className="mt-px font-bold">
@@ -67,6 +69,14 @@ export function StatsPanel({ composition }: { composition: Composition }) {
               Enjambé faute de place
             </dt>
             <dd className="tabular-nums">{Math.round(stats.skippedMm)} mm</dd>
+          </div>
+        ) : null}
+        {stats.roundedMm >= 0.1 ? (
+          <div className="flex justify-between gap-2">
+            <dt title="Écart maximal entre le tracé suivi et le dessin, là où un virage a été élargi pour porter du texte lisible.">
+              Virages élargis de
+            </dt>
+            <dd className="tabular-nums">{stats.roundedMm.toFixed(1)} mm</dd>
           </div>
         ) : null}
         <div className="flex justify-between gap-2">

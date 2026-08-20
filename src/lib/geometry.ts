@@ -107,7 +107,7 @@ export function wrapAngle(angle: number): number {
 
 /** Index voisin, en bouclant sur un tracé fermé et en butant sur un tracé ouvert. */
 function neighbour(index: number, offset: number, count: number, closed: boolean): number {
-  if (closed) return ((index + offset) % count + count) % count
+  if (closed) return (((index + offset) % count) + count) % count
   return Math.max(0, Math.min(count - 1, index + offset))
 }
 
@@ -143,13 +143,13 @@ export function tangentAngles(points: Point[], window: number, closed: boolean):
 }
 
 /**
- * Courbure signée, en 1/pixel : la variation de la tangente rapportée à la
- * longueur parcourue. Son inverse est le rayon du virage, qui est la grandeur
- * qui décide vraiment de la taille maximale lisible du texte.
+ * Courbure signée, en 1/pixel : la variation de la tangente rapportée à la longueur
+ * d'arc réellement parcourue. Son inverse est le rayon du virage, qui est la
+ * grandeur décidant vraiment de la taille maximale lisible du texte.
  */
 export function curvatures(
+  points: Point[],
   angles: number[],
-  step: number,
   window: number,
   closed: boolean,
 ): number[] {
@@ -157,12 +157,30 @@ export function curvatures(
   const out = new Array<number>(count).fill(0)
   if (count < 3) return out
 
+  // Longueurs cumulées, pour obtenir l'arc entre deux échantillons par une simple
+  // soustraction. On divise par l'arc **mesuré** et non par `fenêtre x pas` : c'est
+  // la même chose sur un échantillonnage régulier, mais `relax.ts` déforme le tracé
+  // sans le rééchantillonner, et supposer un pas constant y sous-estimait la
+  // courbure de vingt pour cent.
+  const arc = new Float64Array(count + 1)
+  for (let i = 1; i <= count; i++) {
+    const previous = points[i - 1]!
+    const current = points[i % count]!
+    arc[i] = arc[i - 1]! + Math.hypot(current.x - previous.x, current.y - previous.y)
+  }
+  const total = arc[count]!
+
   for (let i = 0; i < count; i++) {
     const before = neighbour(i, -window, count, closed)
     const after = neighbour(i, window, count, closed)
-    const span = closed ? 2 * window : after - before
+    if (before === after) continue
+
+    // Sur un tracé fermé, la fenêtre peut enjamber le point de recollement : l'arc
+    // se lit alors en deux morceaux, la fin puis le début.
+    const span = after > before ? arc[after]! - arc[before]! : total - arc[before]! + arc[after]!
     if (span <= 0) continue
-    out[i] = wrapAngle(angles[after]! - angles[before]!) / (span * step)
+
+    out[i] = wrapAngle(angles[after]! - angles[before]!) / span
   }
 
   return out

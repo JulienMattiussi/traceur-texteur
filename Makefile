@@ -45,6 +45,9 @@ afm: ## Regenerate src/lib/fonts.ts from the URW base35 AFM files
 favicon: ## Regenerate public/favicon.svg from src/lib/logo.ts
 	npm run favicon
 
+og: ## Regenerate the social share image public/og.png (requires google-chrome)
+	npm run og
+
 bench: ## Run the engine on the reference tracings and write SVG reports to out/
 	npm run bench
 

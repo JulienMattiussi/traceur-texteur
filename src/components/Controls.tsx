@@ -51,6 +51,21 @@ export function Controls({ settings, onChange }: ControlsProps) {
         onChange={(value) => update('minSizeMm', value)}
       />
 
+      <Segmented
+        label="Angles trop serrés"
+        value={settings.roundCorners ? 'elargir' : 'enjamber'}
+        options={[
+          { value: 'elargir', label: 'Élargir le virage' },
+          { value: 'enjamber', label: 'Laisser nu' },
+        ]}
+        onChange={(mode) => update('roundCorners', mode === 'elargir')}
+      />
+      <p className="text-xs leading-snug text-slate-500">
+        {settings.roundCorners
+          ? 'Le tracé s’ouvre juste assez pour porter le corps minimal. Il s’écarte alors un peu du dessin dans les angles.'
+          : 'Le tracé est suivi exactement, et les angles qui ne peuvent pas porter le corps minimal restent sans texte.'}
+      </p>
+
       <Slider
         label="Air autour du texte"
         hint="Part du couloir laissée libre. À 100 %, les lettres se touchent presque."

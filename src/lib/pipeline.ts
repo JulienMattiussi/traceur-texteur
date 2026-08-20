@@ -1,10 +1,11 @@
 import { measureClearances } from '@/lib/clearance'
 import { fitOnce } from '@/lib/fit'
 import { flowText } from '@/lib/flow'
-import { curvatures, polylineLength, resample, sampledLength, tangentAngles } from '@/lib/geometry'
+import { curvatures, resample, sampledLength, tangentAngles } from '@/lib/geometry'
 import { bandHeight, metricsFor } from '@/lib/metrics'
 import { PIXELS_PER_MM, toMillimetres, toPixels, type Canvas } from '@/lib/page'
 import { countOverlaps } from '@/lib/quality'
+import { relaxCurvature } from '@/lib/relax'
 import type { Settings } from '@/lib/settings'
 import { sizeField } from '@/lib/sizing'
 import type { Composition, Ribbon, Stroke } from '@/lib/types'
@@ -56,27 +57,82 @@ const BEND_RATIO = 2
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 
-function buildRibbon(stroke: Stroke): Ribbon | null {
-  const { points, step } = resample(stroke.points, stroke.closed, STEP)
-  if (points.length < 3) return null
+/** Fenêtre de mesure, en échantillons, pour une longueur donnée en millimètres. */
+function windowFor(millimetres: number, step: number): number {
+  return Math.max(1, Math.round((millimetres * PIXELS_PER_MM) / step))
+}
+
+interface BuiltRibbon {
+  ribbon: Ribbon
+  /** Écart maximal, en pixels, entre le tracé suivi et le tracé d'origine. */
+  moved: number
+}
+
+/**
+ * Nombre maximal de passes de relâchement. Un tracé en dents de scie de grande
+ * amplitude ne peut pas être ouvert sans être détruit : au bout de ces passes on
+ * s'arrête, et le plafond de courbure reprend la main sur ce qui reste.
+ */
+const RELAX_PASSES = 60
+
+/**
+ * Budget de relâchement, en échantillons traités toutes passes confondues.
+ *
+ * Chaque passe coûte le tracé entier alors que le défaut, lui, est local : sur une
+ * spirale de vingt-cinq tours, vingt-sept échantillons sur dix-neuf mille
+ * dépassaient la cible, et les ouvrir coûtait 377 ms pour ne récupérer que 25 mm de
+ * texte. Borner le total de passes par la longueur du tracé rend le coût à peu près
+ * constant quelle que soit la taille du dessin, ce dont un curseur a besoin. Les
+ * grands tracés sont donc moins raffinés que les petits, et c'est le bon compromis :
+ * ce sont eux dont la place libre décide de toute façon.
+ */
+const RELAX_BUDGET = 100_000
+
+function buildRibbon(stroke: Stroke, maxCurvature: number): BuiltRibbon | null {
+  const first = resample(stroke.points, stroke.closed, STEP)
+  if (first.points.length < 3) return null
+
+  let points = first.points
+  let step = first.step
+  let moved = 0
+
+  if (maxCurvature > 0) {
+    // `relaxCurvature` rend un tracé déjà rééchantillonné : ouvrir un virage
+    // raccourcit le tracé, donc son pas n'est plus tout à fait celui d'avant, et
+    // c'est le sien qu'il faut retenir pour la suite.
+    const relaxed = relaxCurvature(points, stroke.closed, step, {
+      maxCurvature,
+      window: windowFor(CURVATURE_SMOOTHING_MM, step),
+      passes: Math.max(4, Math.min(RELAX_PASSES, Math.round(RELAX_BUDGET / points.length))),
+    })
+    if (relaxed.points.length < 3) return null
+    points = relaxed.points
+    step = relaxed.step
+    moved = relaxed.moved
+  }
 
   // Les fenêtres de lissage sont exprimées en millimètres imprimés, donc en
   // longueur réelle : le résultat ne dépend pas du pas d'échantillonnage.
-  const tangentWindow = Math.max(1, Math.round((TANGENT_SMOOTHING_MM * PIXELS_PER_MM) / step))
-  const curvatureWindow = Math.max(1, Math.round((CURVATURE_SMOOTHING_MM * PIXELS_PER_MM) / step))
-
-  const angles = tangentAngles(points, tangentWindow, stroke.closed)
+  const angles = tangentAngles(points, windowFor(TANGENT_SMOOTHING_MM, step), stroke.closed)
 
   return {
-    points,
-    angles,
-    curvatures: curvatures(angles, step, curvatureWindow, stroke.closed),
-    // Rempli juste après : la place libre ne se mesure qu'une fois tous les
-    // tracés connus, puisqu'ils se gênent mutuellement.
-    clearances: [],
-    step,
-    length: sampledLength(points.length, step, stroke.closed),
-    closed: stroke.closed,
+    moved,
+    ribbon: {
+      points,
+      angles,
+      curvatures: curvatures(
+        points,
+        angles,
+        windowFor(CURVATURE_SMOOTHING_MM, step),
+        stroke.closed,
+      ),
+      // Rempli juste après : la place libre ne se mesure qu'une fois tous les
+      // tracés connus, puisqu'ils se gênent mutuellement.
+      clearances: [],
+      step,
+      length: sampledLength(points.length, step, stroke.closed),
+      closed: stroke.closed,
+    },
   }
 }
 
@@ -84,12 +140,20 @@ export function compose(strokes: Stroke[], canvas: Canvas, settings: Settings): 
   const timings: Record<string, number> = {}
   const font = metricsFor(settings.family)
 
-  let mark = now()
-  const ribbons = strokes.map(buildRibbon).filter((ribbon): ribbon is Ribbon => ribbon !== null)
-  timings.echantillonnage = now() - mark
-
   const maxSize = toPixels(settings.maxSizeMm)
   const minSize = toPixels(settings.minSizeMm)
+
+  // Le critère de relâchement découle du corps minimal, il n'est pas réglé à part :
+  // on ouvre les virages juste assez pour que la courbure ne dicte jamais un corps
+  // inférieur à celui sous lequel on refuse d'écrire.
+  const maxCurvature = settings.roundCorners ? 1 / (BEND_RATIO * bandHeight(font, minSize)) : 0
+
+  let mark = now()
+  const built = strokes
+    .map((stroke) => buildRibbon(stroke, maxCurvature))
+    .filter((entry): entry is BuiltRibbon => entry !== null)
+  const ribbons = built.map((entry) => entry.ribbon)
+  timings.echantillonnage = now() - mark
 
   // Plafond de recherche : le corps maximal demandé ne peut de toute façon pas
   // grandir au-delà, donc connaître la distance exacte plus loin ne servirait
@@ -142,19 +206,19 @@ export function compose(strokes: Stroke[], canvas: Canvas, settings: Settings): 
     width: canvas.width,
     height: canvas.height,
     glyphs: flow.glyphs,
-    strokes,
+    // Les tracés réellement suivis, et non ceux reçus : quand les virages ont été
+    // relâchés, montrer le dessin d'origine ferait passer le texte pour mal posé
+    // alors qu'il suit exactement sa courbe.
+    strokes: ribbons.map((ribbon) => ({ points: ribbon.points, closed: ribbon.closed })),
     family: settings.family,
     colour: settings.colour,
     stats: {
       strokes: ribbons.length,
-      strokeLength: strokes.reduce(
-        (total, stroke) => total + polylineLength(stroke.points, stroke.closed),
-        0,
-      ),
+      strokeLength: ribbons.reduce((total, ribbon) => total + ribbon.length, 0),
+      roundedMm: toMillimetres(built.reduce((worst, entry) => Math.max(worst, entry.moved), 0)),
       glyphs: flow.glyphs.length,
       repetitions: flow.repetitions,
-      coverage:
-        flow.available > 0 ? Math.max(0, flow.consumed - flow.skipped) / flow.available : 0,
+      coverage: flow.available > 0 ? Math.max(0, flow.consumed - flow.skipped) / flow.available : 0,
       skippedMm: toMillimetres(flow.skipped),
       minSizeMm: toMillimetres(flow.minSize),
       maxSizeMm: toMillimetres(flow.maxSize),

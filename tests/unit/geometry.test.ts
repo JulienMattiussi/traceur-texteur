@@ -124,18 +124,18 @@ describe('tangentAngles', () => {
 
 describe('curvatures', () => {
   it('est nulle sur une droite', () => {
-    const { points, step } = resample(line(200).points, false, 2)
+    const { points } = resample(line(200).points, false, 2)
     const angles = tangentAngles(points, 4, false)
-    for (const curvature of curvatures(angles, step, 4, false)) {
+    for (const curvature of curvatures(points, angles, 4, false)) {
       expect(Math.abs(curvature)).toBeLessThan(1e-9)
     }
   })
 
   it('vaut l’inverse du rayon sur un cercle', () => {
     for (const radius of [25, 60, 140]) {
-      const { points, step } = resample(circle(radius).points, true, 2)
+      const { points } = resample(circle(radius).points, true, 2)
       const angles = tangentAngles(points, 4, true)
-      const measured = curvatures(angles, step, 4, true)
+      const measured = curvatures(points, angles, 4, true)
 
       const average = measured.reduce((sum, value) => sum + Math.abs(value), 0) / measured.length
       // C'est la grandeur qui décide du plafond de taille du texte : une erreur

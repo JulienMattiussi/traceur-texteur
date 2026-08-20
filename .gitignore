@@ -17,6 +17,8 @@ coverage/
 
 # Sorties du harnais de mesure
 out/
+# public/og.png est volontairement versionné : les robots des réseaux sociaux le
+# demandent au déploiement, il ne peut pas être calculé à ce moment-là.
 
 # Images de test (dessins tiers, non redistribuables) et leur décodage
 tools/fixtures/*.jpg

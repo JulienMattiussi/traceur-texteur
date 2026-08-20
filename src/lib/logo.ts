@@ -32,6 +32,18 @@ const SMALLEST = 9
 /** Côté du carré dans lequel la marque est dessinée. */
 export const LOGO_BOX = 48
 
+export interface SpiralShape {
+  /** Nombre de tours, du bord vers le centre. */
+  turns: number
+  /** Rayon de départ et rayon d'arrivée. */
+  outer: number
+  inner: number
+  /** Angle du premier point. */
+  start: number
+}
+
+const SHAPE: SpiralShape = { turns: 1.9, outer: OUTER, inner: INNER, start: START }
+
 const radiusAt = (turned: number): number => OUTER - (OUTER - INNER) * (turned / SWEEP)
 
 function pointAt(turned: number): { x: number; y: number } {
@@ -42,15 +54,31 @@ function pointAt(turned: number): { x: number; y: number } {
   }
 }
 
-/** Le tracé complet, du bord jusqu'au centre, prêt pour un `polyline`. */
-export const LOGO_SPIRAL: string = (() => {
+/**
+ * Une spirale en points prêts pour un `polyline`.
+ *
+ * Paramétrée parce que la marque et l'icône n'ont pas les mêmes contraintes : à
+ * seize pixels de côté, une spirale de deux tours laisse moins de trois pixels
+ * entre ses tours, et un tour de plus la referme en tache. L'icône en prend donc
+ * moins que la marque, tout en restant la même figure.
+ */
+export function spiralPoints(shape: SpiralShape, step = 0.12): string {
+  const sweep = shape.turns * 2 * Math.PI
   const points: string[] = []
-  for (let turned = 0; turned <= SWEEP; turned += 0.12) {
-    const point = pointAt(turned)
-    points.push(`${point.x.toFixed(2)},${point.y.toFixed(2)}`)
+
+  for (let turned = 0; turned <= sweep; turned += step) {
+    const radius = shape.outer - (shape.outer - shape.inner) * (turned / sweep)
+    const angle = shape.start + turned
+    points.push(
+      `${(CENTRE + radius * Math.cos(angle)).toFixed(2)},${(CENTRE + radius * Math.sin(angle)).toFixed(2)}`,
+    )
   }
+
   return points.join(' ')
-})()
+}
+
+/** Le tracé de la marque, du bord jusqu'au centre. */
+export const LOGO_SPIRAL: string = spiralPoints(SHAPE)
 
 export const LOGO_GLYPHS: Glyph[] = (() => {
   const font = metricsFor('serif')
@@ -81,6 +109,21 @@ export const LOGO_GLYPHS: Glyph[] = (() => {
 
   return glyphs
 })()
+
+/**
+ * La spirale de l'icône : moins de tours et plus d'air que la marque, et sans les
+ * lettres. À seize pixels de côté, cinq lettres de neuf unités deviennent quatre
+ * taches grises ; ce qui survit à cette taille, c'est la figure.
+ */
+export const ICON_SPIRAL: SpiralShape = {
+  turns: 1.75,
+  outer: 18.5,
+  inner: 3,
+  start: -Math.PI / 2,
+}
+
+/** Épaisseur du trait de l'icône, dans le repère de `LOGO_BOX`. */
+export const ICON_STROKE = 3.6
 
 /** Un glyphe de la marque en attributs SVG. Partagé par le composant et le favicon. */
 export function logoGlyphTransform(glyph: Glyph): string {
