@@ -1,6 +1,6 @@
 import { useCallback, useId, useMemo, useState, type ReactNode } from 'react'
-import { Controls } from '@/components/Controls'
-import { Logo, TitleLink } from '@/components/Logo'
+import { LayoutPanel } from '@/components/LayoutPanel'
+import { Logo, TitleHyphen } from '@/components/Logo'
 import { Preview } from '@/components/Preview'
 import { SourcePanel } from '@/components/SourcePanel'
 import { StatsPanel } from '@/components/StatsPanel'
@@ -42,41 +42,68 @@ export default function App() {
   const [image, setImage] = useState<LoadedImage | null>(null)
   const [paths, setPaths] = useState<Point[][]>([])
   const [showStroke, setShowStroke] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [loadingImage, setLoadingImage] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const format = useMemo(() => formatByKey(settings.formatKey), [settings.formatKey])
   const canvas = useMemo(() => canvasFor(format), [format])
 
   const handleFile = useCallback(async (file: File) => {
-    setBusy(true)
+    setLoadingImage(true)
     setError(null)
     try {
-      const loaded = await loadGrayImage(file)
-      // L'URL d'objet de l'image remplacée doit être révoquée, sinon son blob
-      // reste en mémoire pour toute la durée de la page.
-      setImage((previous) => {
-        if (previous) URL.revokeObjectURL(previous.sourceUrl)
-        return loaded
-      })
+      setImage(await loadGrayImage(file))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Image illisible.')
       setImage(null)
     } finally {
-      setBusy(false)
+      setLoadingImage(false)
     }
   }, [])
 
   /**
    * Les tracés, quelle que soit leur origine, dans le repère de la page.
    *
-   * Mémoïsé à part de la composition : extraire les traits d'un dessin est de
-   * loin l'étape la plus lourde, et bouger le curseur de corps maximal ne doit
-   * pas la rejouer.
+   * Mémoïsé à part de la composition, et sur les seuls réglages de source :
+   * extraire les traits d'un dessin est de loin l'étape la plus lourde, et taper
+   * le message ou bouger le curseur de corps maximal ne doit pas la rejouer.
    */
+  const { shape, turns, teeth, cornerMm, traceMode, threshold, minBlobArea } = settings
+  const { pruneSpursBelow, minLengthMm } = settings
   const strokes = useMemo(
-    () => strokesFor(source, settings, canvas, { image, paths }),
-    [source, settings, canvas, image, paths],
+    () =>
+      strokesFor(
+        source,
+        {
+          shape,
+          turns,
+          teeth,
+          cornerMm,
+          traceMode,
+          threshold,
+          minBlobArea,
+          pruneSpursBelow,
+          minLengthMm,
+        },
+        canvas,
+        { image, paths },
+      ),
+    [
+      source,
+      shape,
+      turns,
+      teeth,
+      cornerMm,
+      traceMode,
+      threshold,
+      minBlobArea,
+      pruneSpursBelow,
+      minLengthMm,
+      canvas,
+      image,
+      paths,
+    ],
   )
 
   const composition = useMemo(
@@ -102,7 +129,7 @@ export default function App() {
 
   const exportPng = async (): Promise<void> => {
     if (!composition) return
-    setBusy(true)
+    setExporting(true)
     setError(null)
     try {
       const blob = await rasterize(renderSvg(composition))
@@ -110,7 +137,7 @@ export default function App() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Export PNG impossible.')
     } finally {
-      setBusy(false)
+      setExporting(false)
     }
   }
 
@@ -131,7 +158,7 @@ export default function App() {
               className="flex items-center gap-1.5 text-2xl font-bold tracking-tight text-slate-900"
             >
               <span>Traceur</span>
-              <TitleLink />
+              <TitleHyphen />
               <span>texteur</span>
             </h1>
             <p className="text-sm text-slate-600">
@@ -150,7 +177,7 @@ export default function App() {
                 onSettings={setSettings}
                 imageName={image?.name ?? null}
                 onFile={handleFile}
-                busy={busy}
+                loadingImage={loadingImage}
                 aspect={canvas.inset.width / canvas.inset.height}
                 paths={paths}
                 onPaths={setPaths}
@@ -171,7 +198,7 @@ export default function App() {
             </Card>
 
             <Card title="Mise en page">
-              <Controls settings={settings} onChange={setSettings} />
+              <LayoutPanel settings={settings} onChange={setSettings} />
             </Card>
 
             {composition ? (
@@ -192,7 +219,7 @@ export default function App() {
                     onExportSvg={exportSvg}
                     onExportPdf={exportPdf}
                     onPrint={() => window.print()}
-                    busy={busy}
+                    exporting={exporting}
                   />
                 </div>
 
@@ -204,7 +231,7 @@ export default function App() {
               <div className="flex h-72 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white/60 text-center">
                 <Logo className="h-14 w-14 text-slate-300" />
                 <p className="max-w-xs text-sm text-slate-500">
-                  {busy
+                  {loadingImage
                     ? 'Analyse en cours...'
                     : source === 'dessin'
                       ? 'Choisis un dessin au trait pour commencer.'

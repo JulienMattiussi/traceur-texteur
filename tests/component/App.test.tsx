@@ -25,7 +25,7 @@ describe('App', () => {
 
   it('annonce que rien ne se recouvre', () => {
     render(<App />)
-    expect(screen.getByRole('status')).toHaveTextContent(/recouvre/)
+    expect(screen.getByRole('status')).toHaveTextContent(/Aucune lettre/)
   })
 
   it('réécrit la feuille quand on change le message', async () => {
@@ -38,7 +38,7 @@ describe('App', () => {
     await user.type(field, 'court')
 
     expect(sheet().querySelectorAll('text').length).not.toBe(before)
-    expect(sheet().textContent).toContain('c')
+    expect(sheet().textContent?.replace(/\s/g, '')).toMatch(/^(court)+c?o?u?r?$/)
   })
 
   it('change de forme à la demande', async () => {
@@ -134,7 +134,7 @@ describe('App', () => {
       fireEvent.pointerUp(pad, { pointerId: 1 })
 
       expect(sheet().querySelectorAll('text').length).toBeGreaterThan(20)
-      expect(screen.getByRole('status')).toHaveTextContent(/recouvre/)
+      expect(screen.getByRole('status')).toHaveTextContent(/Aucune lettre/)
     } finally {
       box.mockRestore()
     }

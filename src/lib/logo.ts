@@ -1,5 +1,5 @@
-import { advanceOf, metricsFor } from '@/lib/metrics'
-import type { Glyph } from '@/lib/types'
+import { advanceOf, baselineOffset, metricsFor } from '@/lib/metrics'
+import type { Glyph, Point } from '@/lib/types'
 
 /**
  * Géométrie de la marque.
@@ -20,17 +20,16 @@ import type { Glyph } from '@/lib/types'
  */
 
 const WORD = 'Texte'
-const CENTRE = 24
-const SWEEP = 1.9 * 2 * Math.PI
-const OUTER = 20
-const INNER = 3.5
-/** Le mot démarre en bas à gauche et passe par le haut. */
-const START = -Math.PI * 0.92
 const BIGGEST = 12
 const SMALLEST = 9
 
+/** Les couleurs de la marque hors du site : favicon et image de partage. */
+export const BRAND_INK = '#5eead4'
+export const BRAND_BACKGROUND = '#0f172a'
+
 /** Côté du carré dans lequel la marque est dessinée. */
 export const LOGO_BOX = 48
+const CENTRE = LOGO_BOX / 2
 
 export interface SpiralShape {
   /** Nombre de tours, du bord vers le centre. */
@@ -42,15 +41,18 @@ export interface SpiralShape {
   start: number
 }
 
-const SHAPE: SpiralShape = { turns: 1.9, outer: OUTER, inner: INNER, start: START }
+/** Le mot démarre en bas à gauche et passe par le haut. */
+const SHAPE: SpiralShape = { turns: 1.9, outer: 20, inner: 3.5, start: -Math.PI * 0.92 }
 
-const radiusAt = (turned: number): number => OUTER - (OUTER - INNER) * (turned / SWEEP)
+function radiusAt(shape: SpiralShape, turned: number): number {
+  return shape.outer - (shape.outer - shape.inner) * (turned / (shape.turns * 2 * Math.PI))
+}
 
-function pointAt(turned: number): { x: number; y: number } {
-  const radius = radiusAt(turned)
+function spiralPointAt(shape: SpiralShape, turned: number): Point {
+  const radius = radiusAt(shape, turned)
   return {
-    x: CENTRE + radius * Math.cos(START + turned),
-    y: CENTRE + radius * Math.sin(START + turned),
+    x: CENTRE + radius * Math.cos(shape.start + turned),
+    y: CENTRE + radius * Math.sin(shape.start + turned),
   }
 }
 
@@ -67,11 +69,8 @@ export function spiralPoints(shape: SpiralShape, step = 0.12): string {
   const points: string[] = []
 
   for (let turned = 0; turned <= sweep; turned += step) {
-    const radius = shape.outer - (shape.outer - shape.inner) * (turned / sweep)
-    const angle = shape.start + turned
-    points.push(
-      `${(CENTRE + radius * Math.cos(angle)).toFixed(2)},${(CENTRE + radius * Math.sin(angle)).toFixed(2)}`,
-    )
+    const point = spiralPointAt(shape, turned)
+    points.push(`${point.x.toFixed(2)},${point.y.toFixed(2)}`)
   }
 
   return points.join(' ')
@@ -91,16 +90,19 @@ export const LOGO_GLYPHS: Glyph[] = (() => {
     const advance = advanceOf(font, char, size)
     // Un angle d'avance, pas un angle fixe : la lettre suivante commence là où la
     // précédente finit.
-    const step = advance / radiusAt(turned)
+    const step = advance / radiusAt(SHAPE, turned)
     const centre = turned + step / 2
-    const point = pointAt(centre)
+    const point = spiralPointAt(SHAPE, centre)
+    const angle = SHAPE.start + centre + Math.PI / 2
 
+    // La bande d'encre est centrée sur le tracé, exactement comme dans `flow.ts` :
+    // la ligne de base s'en écarte le long de la normale.
+    const offset = baselineOffset(font, size)
     glyphs.push({
       char,
-      x: point.x,
-      // La bande d'encre est centrée sur le tracé, comme dans le moteur.
-      y: point.y + size * 0.33,
-      angle: START + centre + Math.PI / 2,
+      x: point.x - Math.sin(angle) * offset,
+      y: point.y + Math.cos(angle) * offset,
+      angle,
       size,
     })
 
@@ -124,9 +126,3 @@ export const ICON_SPIRAL: SpiralShape = {
 
 /** Épaisseur du trait de l'icône, dans le repère de `LOGO_BOX`. */
 export const ICON_STROKE = 3.6
-
-/** Un glyphe de la marque en attributs SVG. Partagé par le composant et le favicon. */
-export function logoGlyphTransform(glyph: Glyph): string {
-  const degrees = ((glyph.angle * 180) / Math.PI).toFixed(1)
-  return `translate(${glyph.x.toFixed(2)} ${glyph.y.toFixed(2)}) rotate(${degrees})`
-}

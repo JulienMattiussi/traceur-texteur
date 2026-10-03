@@ -26,6 +26,24 @@ interface GrayImage {
   height: number
 }
 
+/**
+ * Les seuls réglages dont dépendent les tracés. Les isoler permet à l'interface de
+ * ne pas relancer l'extraction d'un dessin, de loin l'étape la plus lourde, quand
+ * seul le texte ou sa taille change.
+ */
+export type SourceSettings = Pick<
+  Settings,
+  | 'shape'
+  | 'turns'
+  | 'teeth'
+  | 'cornerMm'
+  | 'traceMode'
+  | 'threshold'
+  | 'minBlobArea'
+  | 'pruneSpursBelow'
+  | 'minLengthMm'
+>
+
 export interface SourceInput {
   /** Le dessin déposé, s'il y en a un. */
   image?: GrayImage | null
@@ -48,7 +66,7 @@ const CLOSE_WITHIN_MM = 6
 
 export function strokesFor(
   source: SourceKind,
-  settings: Settings,
+  settings: SourceSettings,
   canvas: Canvas,
   input: SourceInput = {},
 ): Stroke[] {
@@ -71,10 +89,6 @@ export function strokesFor(
       threshold: settings.threshold,
       minBlobArea: settings.minBlobArea,
       pruneSpursBelow: settings.pruneSpursBelow,
-      // La longueur minimale est un réglage de page, exprimé en millimètres
-      // imprimés : elle doit donc être comparée après cadrage, et non dans les
-      // pixels de l'image d'origine, dont l'échelle est arbitraire.
-      minLength: 0,
     })
     return orderStrokes(fitStrokes(traced, canvas), toPixels(settings.minLengthMm))
   }

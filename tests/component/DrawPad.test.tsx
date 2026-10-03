@@ -71,7 +71,7 @@ describe('DrawPad', () => {
 
   it('normalise les positions entre 0 et 1', () => {
     // Le composant ne renvoie que des positions brutes normalisées : la mise à
-    // l'échelle et le lissage sont du ressort de `page.ts` et de `smooth.ts`.
+    // l'échelle et le lissage sont du ressort de `source.ts` et de `smooth.ts`.
     const onChange = vi.fn()
     render(<Harness onChange={onChange} />)
 
@@ -131,7 +131,7 @@ describe('DrawPad', () => {
       [90, 70],
     ])
 
-    await user.click(screen.getByRole('button', { name: 'Annuler' }))
+    await user.click(screen.getByRole('button', { name: 'Retirer le dernier' }))
     expect(screen.getByText('1 tracé.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Tout effacer' }))
@@ -140,7 +140,7 @@ describe('DrawPad', () => {
 
   it('désactive les deux boutons tant que rien n’est tracé', () => {
     render(<Harness />)
-    expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Retirer le dernier' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Tout effacer' })).toBeDisabled()
   })
 

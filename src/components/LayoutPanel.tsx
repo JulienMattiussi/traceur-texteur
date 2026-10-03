@@ -1,6 +1,6 @@
 import { Segmented, Slider } from '@/components/Field'
 import { FORMATS } from '@/lib/page'
-import type { Settings } from '@/lib/settings'
+import { settingUpdater, type Settings } from '@/lib/settings'
 
 /**
  * Les réglages de mise en page.
@@ -11,14 +11,13 @@ import type { Settings } from '@/lib/settings'
  * « taille du texte », qui ferait attendre une taille uniforme.
  */
 
-interface ControlsProps {
+interface LayoutPanelProps {
   settings: Settings
   onChange: (settings: Settings) => void
 }
 
-export function Controls({ settings, onChange }: ControlsProps) {
-  const update = <K extends keyof Settings>(key: K, value: Settings[K]): void =>
-    onChange({ ...settings, [key]: value })
+export function LayoutPanel({ settings, onChange }: LayoutPanelProps) {
+  const update = settingUpdater(settings, onChange)
 
   return (
     <div className="space-y-3.5">
@@ -53,15 +52,15 @@ export function Controls({ settings, onChange }: ControlsProps) {
 
       <Segmented
         label="Angles trop serrés"
-        value={settings.roundCorners ? 'elargir' : 'enjamber'}
+        value={settings.widenBends ? 'elargir' : 'enjamber'}
         options={[
           { value: 'elargir', label: 'Élargir le virage' },
           { value: 'enjamber', label: 'Laisser nu' },
         ]}
-        onChange={(mode) => update('roundCorners', mode === 'elargir')}
+        onChange={(mode) => update('widenBends', mode === 'elargir')}
       />
       <p className="text-xs leading-snug text-slate-500">
-        {settings.roundCorners
+        {settings.widenBends
           ? 'Le tracé s’ouvre juste assez pour porter le corps minimal. Il s’écarte alors un peu du dessin dans les angles.'
           : 'Le tracé est suivi exactement, et les angles qui ne peuvent pas porter le corps minimal restent sans texte.'}
       </p>

@@ -2,11 +2,11 @@ import { useRef, useState } from 'react'
 
 interface DropzoneProps {
   onFile: (file: File) => void
-  busy: boolean
+  loading: boolean
   currentName: string | null
 }
 
-export function Dropzone({ onFile, busy, currentName }: DropzoneProps) {
+export function Dropzone({ onFile, loading, currentName }: DropzoneProps) {
   const input = useRef<HTMLInputElement>(null)
   const [hovering, setHovering] = useState(false)
 
@@ -44,10 +44,10 @@ export function Dropzone({ onFile, busy, currentName }: DropzoneProps) {
       <button
         type="button"
         onClick={() => input.current?.click()}
-        disabled={busy}
+        disabled={loading}
         className="mt-2.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-700 disabled:opacity-50"
       >
-        {busy ? 'Analyse...' : currentName ? 'Changer d’image' : 'Choisir une image'}
+        {loading ? 'Analyse...' : currentName ? 'Changer d’image' : 'Choisir une image'}
       </button>
 
       <input

@@ -14,8 +14,8 @@ function gridOf(points: Point[], cell: number) {
 /** Les indices trouvés dans les neuf cellules autour d'un point. */
 function near(grid: ReturnType<typeof gridOf>, point: Point): number[] {
   const found: number[] = []
-  const cellX = grid.columnOf(point.x)
-  const cellY = grid.columnOf(point.y)
+  const cellX = grid.cellOf(point.x)
+  const cellY = grid.cellOf(point.y)
 
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
@@ -92,7 +92,7 @@ describe('buildCellGrid', () => {
     // Tous les points confondus donnent une portée nulle chez les appelants.
     const grid = gridOf([{ x: 5, y: 5 }], 0)
     expect(grid.cell).toBeGreaterThan(0)
-    expect(Number.isFinite(grid.columnOf(5))).toBe(true)
+    expect(Number.isFinite(grid.cellOf(5))).toBe(true)
   })
 
   it('ne trouve rien dans une cellule vide', () => {

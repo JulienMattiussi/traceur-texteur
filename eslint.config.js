@@ -18,7 +18,7 @@ export default defineConfig([
       prettierConfig,
     ],
     languageOptions: {
-      ecmaVersion: 2020,
+      ecmaVersion: 2023,
       globals: globals.browser,
     },
   },

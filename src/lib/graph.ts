@@ -1,16 +1,7 @@
+import { polylineLength } from '@/lib/geometry'
 import { cleanUpGraph } from '@/lib/graph-cleanup'
+import { inkedIn, NEIGHBOURS_8 } from '@/lib/mask'
 import type { GraphEdge, GraphNode, Mask, Point, SkeletonGraph } from '@/lib/types'
-
-const NEIGHBOURS_8 = [
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-  [-1, 0],
-  [1, 0],
-  [-1, 1],
-  [0, 1],
-  [1, 1],
-] as const
 
 export interface GraphOptions {
   /**
@@ -36,8 +27,7 @@ export function buildGraph(skeleton: Mask, options: GraphOptions = {}): Skeleton
   const { width, height, data } = skeleton
   const { pruneSpursBelow = 0 } = options
 
-  const inked = (x: number, y: number): boolean =>
-    x >= 0 && y >= 0 && x < width && y < height && data[y * width + x] === 1
+  const inked = inkedIn(skeleton)
 
   const xOf = (p: number): number => p % width
   const yOf = (p: number): number => (p - (p % width)) / width
@@ -117,13 +107,7 @@ export function buildGraph(skeleton: Mask, options: GraphOptions = {}): Skeleton
   const directLinks = new Set<string>()
 
   const addEdge = (a: number, b: number, points: Point[]): void => {
-    let length = 0
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1]!
-      const cur = points[i]!
-      length += Math.hypot(cur.x - prev.x, cur.y - prev.y)
-    }
-    edges.push({ id: edges.length, a, b, points, length })
+    edges.push({ id: edges.length, a, b, points, length: polylineLength(points, false) })
   }
 
   /**

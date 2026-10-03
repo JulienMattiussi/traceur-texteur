@@ -3,7 +3,7 @@ import { fitOnce } from '@/lib/fit'
 import { flowText } from '@/lib/flow'
 import { curvatures, resample, sampledLength, tangentAngles } from '@/lib/geometry'
 import { bandHeight, metricsFor } from '@/lib/metrics'
-import { PIXELS_PER_MM, toMillimetres, toPixels, type Canvas } from '@/lib/page'
+import { toMillimetres, toPixels, type Canvas } from '@/lib/page'
 import { countOverlaps } from '@/lib/quality'
 import { relaxCurvature } from '@/lib/relax'
 import type { Settings } from '@/lib/settings'
@@ -19,14 +19,14 @@ import type { Composition, Ribbon, Stroke } from '@/lib/types'
  */
 
 /**
- * Pas d'échantillonnage, en pixels, soit un demi-millimètre imprimé.
+ * Pas d'échantillonnage : un demi-millimètre imprimé.
  *
  * Plus fin ne mesure rien de plus : la tangente et la courbure sont de toute
  * façon lissées sur une fenêtre de plusieurs millimètres. En revanche le coût de
  * la place libre est quadratique en densité d'échantillons, et passer de 0,25 à
  * 0,5 mm a divisé le temps de calcul d'une spirale de vingt tours par quatre.
  */
-const STEP = 2
+const STEP = toPixels(0.5)
 
 /** Longueur de lissage de la tangente, en millimètres imprimés. */
 const TANGENT_SMOOTHING_MM = 1.5
@@ -55,11 +55,9 @@ const SLOPE = 0.08
 /** Rayon de virage minimal exigé, en multiples de la hauteur de bande. */
 const BEND_RATIO = 2
 
-const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now())
-
 /** Fenêtre de mesure, en échantillons, pour une longueur donnée en millimètres. */
 function windowFor(millimetres: number, step: number): number {
-  return Math.max(1, Math.round((millimetres * PIXELS_PER_MM) / step))
+  return Math.max(1, Math.round(toPixels(millimetres) / step))
 }
 
 interface BuiltRibbon {
@@ -92,24 +90,15 @@ function buildRibbon(stroke: Stroke, maxCurvature: number): BuiltRibbon | null {
   const first = resample(stroke.points, stroke.closed, STEP)
   if (first.points.length < 3) return null
 
-  let points = first.points
-  let step = first.step
-  let moved = 0
-
-  if (maxCurvature > 0) {
-    // `relaxCurvature` rend un tracé déjà rééchantillonné : ouvrir un virage
-    // raccourcit le tracé, donc son pas n'est plus tout à fait celui d'avant, et
-    // c'est le sien qu'il faut retenir pour la suite.
-    const relaxed = relaxCurvature(points, stroke.closed, step, {
-      maxCurvature,
-      window: windowFor(CURVATURE_SMOOTHING_MM, step),
-      passes: Math.max(4, Math.min(RELAX_PASSES, Math.round(RELAX_BUDGET / points.length))),
-    })
-    if (relaxed.points.length < 3) return null
-    points = relaxed.points
-    step = relaxed.step
-    moved = relaxed.moved
-  }
+  // `relaxCurvature` rend un tracé déjà rééchantillonné : ouvrir un virage
+  // raccourcit le tracé, donc son pas n'est plus tout à fait celui d'avant, et
+  // c'est le sien qu'il faut retenir pour la suite. Sans plafond de courbure, il
+  // rend le tracé tel quel.
+  const { points, step, moved } = relaxCurvature(first.points, stroke.closed, first.step, {
+    maxCurvature,
+    window: windowFor(CURVATURE_SMOOTHING_MM, first.step),
+    maxPasses: Math.max(4, Math.min(RELAX_PASSES, Math.round(RELAX_BUDGET / first.points.length))),
+  })
 
   // Les fenêtres de lissage sont exprimées en millimètres imprimés, donc en
   // longueur réelle : le résultat ne dépend pas du pas d'échantillonnage.
@@ -146,21 +135,21 @@ export function compose(strokes: Stroke[], canvas: Canvas, settings: Settings): 
   // Le critère de relâchement découle du corps minimal, il n'est pas réglé à part :
   // on ouvre les virages juste assez pour que la courbure ne dicte jamais un corps
   // inférieur à celui sous lequel on refuse d'écrire.
-  const maxCurvature = settings.roundCorners ? 1 / (BEND_RATIO * bandHeight(font, minSize)) : 0
+  const maxCurvature = settings.widenBends ? 1 / (BEND_RATIO * bandHeight(font, minSize)) : 0
 
-  let mark = now()
+  let mark = performance.now()
   const built = strokes
     .map((stroke) => buildRibbon(stroke, maxCurvature))
     .filter((entry): entry is BuiltRibbon => entry !== null)
   const ribbons = built.map((entry) => entry.ribbon)
-  timings.echantillonnage = now() - mark
+  timings.echantillonnage = performance.now() - mark
 
   // Plafond de recherche : le corps maximal demandé ne peut de toute façon pas
   // grandir au-delà, donc connaître la distance exacte plus loin ne servirait
   // qu'à ralentir la recherche.
   const cap = bandHeight(font, maxSize) / Math.max(settings.fillRatio, 0.05)
 
-  mark = now()
+  mark = performance.now()
   const clearances = measureClearances(ribbons, {
     cap,
     gate: cap * GATE_RATIO,
@@ -171,9 +160,9 @@ export function compose(strokes: Stroke[], canvas: Canvas, settings: Settings): 
     bounds: { x: 0, y: 0, width: canvas.width, height: canvas.height },
   })
   for (let i = 0; i < ribbons.length; i++) ribbons[i]!.clearances = clearances[i]!
-  timings.placeLibre = now() - mark
+  timings.placeLibre = performance.now() - mark
 
-  mark = now()
+  mark = performance.now()
   const fields = ribbons.map((ribbon) =>
     sizeField(ribbon, {
       font,
@@ -184,9 +173,9 @@ export function compose(strokes: Stroke[], canvas: Canvas, settings: Settings): 
       slope: SLOPE,
     }),
   )
-  timings.tailles = now() - mark
+  timings.tailles = performance.now() - mark
 
-  mark = now()
+  mark = performance.now()
   const flowOptions = {
     font,
     text: settings.text,
@@ -196,11 +185,11 @@ export function compose(strokes: Stroke[], canvas: Canvas, settings: Settings): 
   const flow = settings.repeat
     ? flowText(ribbons, fields, { ...flowOptions, repeat: true, scale: 1 })
     : fitOnce(ribbons, fields, flowOptions)
-  timings.pose = now() - mark
+  timings.pose = performance.now() - mark
 
-  mark = now()
+  mark = performance.now()
   const overlaps = countOverlaps(flow.glyphs, font)
-  timings.controle = now() - mark
+  timings.controle = performance.now() - mark
 
   return {
     width: canvas.width,

@@ -18,7 +18,7 @@ export interface Settings {
 
   /** Répéter le texte jusqu'à remplir, ou ne l'écrire qu'une fois. */
   repeat: boolean
-  /** Ce qui sépare deux répétitions. Une espace insécable évite un blanc double. */
+  /** Ce qui sépare deux répétitions. */
   separator: string
   /** Interlettrage additionnel, en part de l'avance. */
   tracking: number
@@ -33,7 +33,7 @@ export interface Settings {
    * rétrécir le texte ou de les enjamber. Le tracé s'écarte alors un peu du dessin
    * dans les angles, et `stats.roundedMm` dit de combien.
    */
-  roundCorners: boolean
+  widenBends: boolean
 
   /** Réglages de forme. */
   shape: ShapeKind
@@ -66,7 +66,7 @@ export const DEFAULT_SETTINGS: Settings = {
   // maintenant élargis, donc ce plancher ne coûte presque plus de couverture.
   minSizeMm: 2.5,
   fillRatio: 0.85,
-  roundCorners: true,
+  widenBends: true,
 
   shape: 'spirale',
   turns: 7,
@@ -78,4 +78,10 @@ export const DEFAULT_SETTINGS: Settings = {
   minBlobArea: 24,
   pruneSpursBelow: 6,
   minLengthMm: 12,
+}
+
+/** Change un seul réglage. Chaque panneau en a besoin, sous la même forme. */
+export function settingUpdater(settings: Settings, onChange: (settings: Settings) => void) {
+  return <K extends keyof Settings>(key: K, value: Settings[K]): void =>
+    onChange({ ...settings, [key]: value })
 }

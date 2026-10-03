@@ -136,6 +136,15 @@ describe('renderPdf', () => {
     expect(text).toContain('(\\\\) Tj')
   })
 
+  it('encode le titre comme le texte, puisqu’il vient du nom du fichier', () => {
+    // Une apostrophe typographique tronquée à un octet donnait 0x19, un caractère
+    // de contrôle, et une parenthèse non échappée fermait la chaîne.
+    const text = decode(
+      renderPdf(composition(), formatByKey('a4-portrait'), { title: 'l’été (2)' }),
+    )
+    expect(text).toContain('/Title (l\\222\\351t\\351 \\(2\\))')
+  })
+
   it('donne à la page les dimensions exactes du format', () => {
     for (const format of FORMATS) {
       const text = decode(renderPdf(composition(), format))
@@ -159,10 +168,7 @@ describe('renderPdf', () => {
     }
     for (const [family, postscript] of Object.entries(expected)) {
       const text = decode(
-        renderPdf(
-          composition({ family: family as FontFamily }),
-          formatByKey('a4-portrait'),
-        ),
+        renderPdf(composition({ family: family as FontFamily }), formatByKey('a4-portrait')),
       )
       expect(text).toContain(`/BaseFont /${postscript}`)
       // Aucune police embarquée : c'est tout l'intérêt des quatorze de base.
@@ -171,9 +177,7 @@ describe('renderPdf', () => {
   })
 
   it('convertit la couleur de l’interface', () => {
-    const text = decode(
-      renderPdf(composition({ colour: '#ff8000' }), formatByKey('a4-portrait')),
-    )
+    const text = decode(renderPdf(composition({ colour: '#ff8000' }), formatByKey('a4-portrait')))
     expect(text).toContain('1 0.5 0 rg')
   })
 
@@ -206,9 +210,7 @@ describe('renderPdf', () => {
   })
 
   it('supporte une composition vide', () => {
-    const text = decode(
-      renderPdf(composition({ glyphs: [] }), formatByKey('a4-portrait')),
-    )
+    const text = decode(renderPdf(composition({ glyphs: [] }), formatByKey('a4-portrait')))
     expect(text).toContain('BT')
     expect(text).toContain('ET')
     expect(text).not.toContain('Tj')

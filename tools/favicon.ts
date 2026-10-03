@@ -13,18 +13,22 @@
  *   make favicon
  */
 import { writeFileSync } from 'node:fs'
-import { ICON_SPIRAL, ICON_STROKE, LOGO_BOX, spiralPoints } from '@/lib/logo'
-
-const INK = '#5eead4'
-const BACKGROUND = '#0f172a'
+import {
+  BRAND_BACKGROUND,
+  BRAND_INK,
+  ICON_SPIRAL,
+  ICON_STROKE,
+  LOGO_BOX,
+  spiralPoints,
+} from '@/lib/logo'
 
 const svg = `<!-- Généré par \`make favicon\` depuis src/lib/logo.ts. Ne pas éditer à la main. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${LOGO_BOX} ${LOGO_BOX}">
-  <rect width="${LOGO_BOX}" height="${LOGO_BOX}" rx="10" fill="${BACKGROUND}"/>
+  <rect width="${LOGO_BOX}" height="${LOGO_BOX}" rx="10" fill="${BRAND_BACKGROUND}"/>
   <polyline
     points="${spiralPoints(ICON_SPIRAL, 0.08)}"
     fill="none"
-    stroke="${INK}"
+    stroke="${BRAND_INK}"
     stroke-width="${ICON_STROKE}"
     stroke-linecap="round"
     stroke-linejoin="round"

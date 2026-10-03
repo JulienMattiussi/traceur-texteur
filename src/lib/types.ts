@@ -5,6 +5,14 @@ export interface Point {
   y: number
 }
 
+/** Rectangle aligné sur les axes : zone utile, cadre d'une forme, bord de page. */
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 /** Les trois familles disponibles, choisies parce que tout lecteur PDF les possède. */
 export type FontFamily = 'sans' | 'serif' | 'mono'
 

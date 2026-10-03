@@ -1,5 +1,6 @@
 import { cssFontFamily } from '@/lib/metrics'
-import { LOGO_BOX, LOGO_GLYPHS, LOGO_SPIRAL, logoGlyphTransform } from '@/lib/logo'
+import { LOGO_BOX, LOGO_GLYPHS, LOGO_SPIRAL } from '@/lib/logo'
+import { glyphTransform } from '@/lib/svg'
 
 /**
  * La marque. Sa géométrie vit dans `src/lib/logo.ts`, que le favicon partage :
@@ -18,11 +19,7 @@ export function Logo({ className }: { className?: string }) {
       />
       <g fill="currentColor" fontFamily={cssFontFamily('serif')} textAnchor="middle">
         {LOGO_GLYPHS.map((glyph, index) => (
-          <text
-            key={index}
-            transform={logoGlyphTransform(glyph)}
-            fontSize={glyph.size.toFixed(2)}
-          >
+          <text key={index} transform={glyphTransform(glyph)} fontSize={glyph.size.toFixed(2)}>
             {glyph.char}
           </text>
         ))}
@@ -35,7 +32,7 @@ export function Logo({ className }: { className?: string }) {
  * Le trait d'union du titre, remplacé par un arc : c'est la liaison courbe qui
  * porte le texte, donc le sujet même de l'application.
  */
-export function TitleLink() {
+export function TitleHyphen() {
   return (
     <svg viewBox="0 0 20 12" className="h-3 w-5 shrink-0 text-sky-500" aria-hidden="true">
       <path

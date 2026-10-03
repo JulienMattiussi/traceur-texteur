@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { curvatures, distance, polylineLength, resample, tangentAngles } from '@/lib/geometry'
-import { buildShape, roundCorners, SHAPES, type Box, type ShapeOptions } from '@/lib/shapes'
+import { buildShape, roundCorners, SHAPES, type ShapeOptions } from '@/lib/shapes'
+import type { Rect } from '@/lib/types'
 
-const BOX: Box = { x: 40, y: 40, width: 760, height: 1108 }
+const BOX: Rect = { x: 40, y: 40, width: 760, height: 1108 }
 const OPTIONS: ShapeOptions = { corner: 32, turns: 7, teeth: 6 }
 
 /** Courbure maximale d'un tracé, mesurée comme le fait le pipeline. */

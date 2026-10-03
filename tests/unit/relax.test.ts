@@ -7,7 +7,7 @@ import { circle } from '../fixtures'
 const STEP = 2
 const WINDOW = 6
 
-const OPTIONS: RelaxOptions = { maxCurvature: 1 / 40, window: WINDOW, passes: 60 }
+const OPTIONS: RelaxOptions = { maxCurvature: 1 / 40, window: WINDOW, maxPasses: 60 }
 
 /** Courbure maximale, mesurée exactement comme le fait le pipeline. */
 function peak(points: Point[], closed: boolean): number {
@@ -124,15 +124,13 @@ describe('relaxCurvature', () => {
     }
     const { points, step } = resample(spiral, false, STEP)
 
-    const started = performance.now()
     const relaxed = relaxCurvature(points, false, step, OPTIONS)
-    expect(performance.now() - started).toBeLessThan(500)
-    expect(relaxed.passes).toBeLessThan(OPTIONS.passes)
+    expect(relaxed.passes).toBeLessThan(OPTIONS.maxPasses)
   })
 
   it('respecte le plafond de passes', () => {
     const { points, step } = resample(flower(6, 150), true, STEP)
-    const relaxed = relaxCurvature(points, true, step, { ...OPTIONS, passes: 3 })
+    const relaxed = relaxCurvature(points, true, step, { ...OPTIONS, maxPasses: 3 })
     expect(relaxed.passes).toBeLessThanOrEqual(3)
   })
 

@@ -29,9 +29,8 @@ export async function rasterize(svg: string, scale = DEFAULT_SCALE): Promise<Blo
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Le canvas 2D est indisponible dans ce navigateur.')
 
-    // Le SVG n'a pas de fond quand il est destiné à la surimpression ; un PNG
-    // partagé, lui, doit être opaque, sinon il s'affiche noir sur les messageries
-    // en thème sombre.
+    // Fond blanc posé ici aussi, quel que soit le SVG reçu : un PNG partagé doit
+    // être opaque, sinon il s'affiche noir sur les messageries en thème sombre.
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, canvas.width, canvas.height)
     context.drawImage(image, 0, 0, canvas.width, canvas.height)

@@ -41,7 +41,7 @@ export interface CellGrid {
    */
   cell: number
   /** Coordonnée de cellule d'une abscisse ou d'une ordonnée. */
-  columnOf(coordinate: number): number
+  cellOf(coordinate: number): number
   /** Les indices rangés dans une cellule, ou `undefined` si elle est vide. */
   bucketAt(cellX: number, cellY: number): number[] | undefined
 }
@@ -72,7 +72,7 @@ export function buildCellGrid(
 
   return {
     cell: side,
-    columnOf: (coordinate) => Math.floor(coordinate / side),
+    cellOf: (coordinate) => Math.floor(coordinate / side),
     bucketAt: (cellX, cellY) => buckets.get(cellKey(cellX, cellY)),
   }
 }

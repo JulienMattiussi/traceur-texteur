@@ -1,5 +1,5 @@
 import type { FontMetrics } from '@/lib/fonts'
-import { angleAt, pointAt, sampleAt } from '@/lib/geometry'
+import { angleAt, pointAt, sampleAt, wrapIndex } from '@/lib/geometry'
 import { advanceOf, bandHeight, baselineOffset, toChars } from '@/lib/metrics'
 import type { SizeField } from '@/lib/sizing'
 import type { Glyph, Ribbon } from '@/lib/types'
@@ -38,8 +38,6 @@ export interface FlowResult {
   available: number
   /** Longueur enjambée faute de place, comprise dans `consumed`. */
   skipped: number
-  /** Nombre de caractères posés, espaces compris. */
-  placed: number
   /** Nombre de fois que le texte a été écrit en entier. */
   repetitions: number
   /** Vrai si, en mode « une seule fois », le texte n'a pas tenu. */
@@ -66,13 +64,11 @@ function arcAdvance(advance: number, curvature: number, band: number): number {
  * partie de cette portion soit trop étroite pour qu'il ne faille pas l'écrire.
  */
 function spanBlocked(ribbon: Ribbon, blocked: boolean[], from: number, to: number): boolean {
-  const count = blocked.length
   const first = Math.floor(from / ribbon.step)
   const last = Math.ceil(to / ribbon.step)
 
   for (let i = first; i <= last; i++) {
-    const index = ribbon.closed ? ((i % count) + count) % count : Math.max(0, Math.min(count - 1, i))
-    if (blocked[index]) return true
+    if (blocked[wrapIndex(i, 0, blocked.length, ribbon.closed)]) return true
   }
   return false
 }
@@ -108,7 +104,6 @@ export function flowText(ribbons: Ribbon[], fields: SizeField[], options: FlowOp
       consumed: 0,
       available: ribbons.reduce((sum, ribbon) => sum + ribbon.length, 0),
       skipped: 0,
-      placed: 0,
       repetitions: 0,
       truncated: false,
       minSize: 0,
@@ -183,7 +178,6 @@ export function flowText(ribbons: Ribbon[], fields: SizeField[], options: FlowOp
     consumed,
     available,
     skipped,
-    placed: index,
     repetitions: repeat ? index / cycle.length : index >= unit.length ? 1 : 0,
     truncated: !repeat && index < unit.length,
     minSize: minSize === Infinity ? 0 : minSize,

@@ -32,8 +32,8 @@ export interface SizingOptions {
   /** Corps maximal, en pixels, quelle que soit la place disponible. */
   maxSize: number
   /**
-   * Corps minimal. C'est un plancher de lisibilité, pas une garantie : là où il
-   * dépasse la place libre, il est retenu quand même, et compté.
+   * Corps minimal. C'est un plancher de lisibilité : là où même lui ne tiendrait
+   * pas, l'échantillon est marqué bloqué et le texte l'enjambe, ce qui est compté.
    */
   minSize: number
   /** Part du couloir disponible que le texte occupe. En dessous de 1, il reste de l'air. */

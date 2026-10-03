@@ -1,3 +1,4 @@
+import { polylineLength } from '@/lib/geometry'
 import type { GraphEdge, GraphNode, SkeletonGraph } from '@/lib/types'
 
 /**
@@ -13,7 +14,6 @@ import type { GraphEdge, GraphNode, SkeletonGraph } from '@/lib/types'
  * Module porté de traceur-compteur, où il est documenté en détail.
  */
 export function cleanUpGraph(graph: SkeletonGraph, pruneSpursBelow: number): SkeletonGraph {
-  computeDegrees(graph)
   const pruned = pruneSpursBelow > 0 ? pruneSpurs(graph, pruneSpursBelow) : graph
   return dissolveDegreeTwoNodes(dropIsolatedNodes(dropDegenerateLoops(pruned)))
 }
@@ -26,9 +26,7 @@ export function cleanUpGraph(graph: SkeletonGraph, pruneSpursBelow: number): Ske
 function dropDegenerateLoops(graph: SkeletonGraph, minLength = 4): SkeletonGraph {
   const kept = graph.edges.filter((edge) => edge.a !== edge.b || edge.length >= minLength)
   if (kept.length === graph.edges.length) return graph
-  const result: SkeletonGraph = { nodes: graph.nodes, edges: kept }
-  computeDegrees(result)
-  return result
+  return { nodes: graph.nodes, edges: kept }
 }
 
 /**
@@ -45,8 +43,6 @@ function dissolveDegreeTwoNodes(graph: SkeletonGraph): SkeletonGraph {
   let edges = graph.edges
 
   for (;;) {
-    computeDegrees({ nodes, edges })
-
     // Une boucle sur soi compte deux rattachements : sans ça, un sommet portant
     // une boucle plus un trait passerait pour un degré 2, et le fusionner
     // laisserait une arête pointant vers un sommet supprimé.
@@ -81,12 +77,7 @@ function dissolveDegreeTwoNodes(graph: SkeletonGraph): SkeletonGraph {
       points.push(point)
     }
 
-    let length = 0
-    for (let i = 1; i < points.length; i++) {
-      const previous = points[i - 1]!
-      const cur = points[i]!
-      length += Math.hypot(cur.x - previous.x, cur.y - previous.y)
-    }
+    const length = polylineLength(points, false)
 
     edges = [
       ...edges.filter((edge) => edge.id !== firstId && edge.id !== secondId),

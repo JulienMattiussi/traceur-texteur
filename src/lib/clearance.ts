@@ -1,5 +1,5 @@
 import { buildCellGrid } from '@/lib/grid'
-import type { Point } from '@/lib/types'
+import type { Point, Rect } from '@/lib/types'
 
 /**
  * Combien de place le tracé laisse-t-il autour de lui, en chaque point ?
@@ -55,7 +55,7 @@ export interface ClearanceOptions {
    * couloir. Sans ça, un texte écrit sur le contour d'une forme déborde
    * simplement de la page.
    */
-  bounds?: { x: number; y: number; width: number; height: number }
+  bounds?: Rect
 }
 
 /**
@@ -127,8 +127,8 @@ export function measureClearances(strokes: Sampled[], options: ClearanceOptions)
     const border = borderClearance(x, y, options)
     let best = Math.min(capSquared, border * border)
 
-    const cellX = grid.columnOf(x)
-    const cellY = grid.columnOf(y)
+    const cellX = grid.cellOf(x)
+    const cellY = grid.cellOf(y)
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {

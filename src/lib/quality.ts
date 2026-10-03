@@ -1,6 +1,6 @@
 import type { FontMetrics } from '@/lib/fonts'
 import { buildCellGrid } from '@/lib/grid'
-import { advanceOf, bandHeight } from '@/lib/metrics'
+import { advanceOf, bandHeight, baselineOffset } from '@/lib/metrics'
 import type { Glyph, Point } from '@/lib/types'
 
 /**
@@ -10,9 +10,12 @@ import type { Glyph, Point } from '@/lib/types'
  * que le supposer est le seul moyen de savoir si les plafonds de `sizing.ts`
  * suffisent : eux raisonnent sur des échantillons du tracé, pas sur les boîtes
  * réellement posées, et ils bornent une bande alors qu'un caractère occupe un
- * rectangle. Un chiffre non nul veut dire qu'un réglage est allé trop loin,
- * typiquement un plancher de taille au-dessus de la place libre.
+ * rectangle. Un chiffre non nul veut dire que ces plafonds ont laissé passer un
+ * cas qu'ils ne voient pas.
  */
+
+/** Absorbe le contact exact, que le flottant rendrait tantôt disjoint tantôt sécant. */
+const SLACK = 0.98
 
 interface OrientedBox {
   centre: Point
@@ -38,7 +41,7 @@ function boxOf(glyph: Glyph, font: FontMetrics): OrientedBox {
 
   // La bande d'encre est centrée sur le tracé, donc son centre se retrouve en
   // remontant depuis la ligne de base le long de la normale.
-  const offset = ((font.ascent + font.descent) * glyph.size) / 2000
+  const offset = baselineOffset(font, glyph.size)
   return {
     centre: { x: glyph.x + sin * offset, y: glyph.y - cos * offset },
     halfWidth: advance / 2,
@@ -58,7 +61,7 @@ function radiusOf(box: OrientedBox): number {
  * existe un axe, parmi les quatre portés par leurs côtés, sur lequel leurs
  * projections ne se recouvrent pas.
  */
-function overlaps(a: OrientedBox, b: OrientedBox, slack: number): boolean {
+function overlaps(a: OrientedBox, b: OrientedBox): boolean {
   const dx = b.centre.x - a.centre.x
   const dy = b.centre.y - a.centre.y
 
@@ -77,7 +80,7 @@ function overlaps(a: OrientedBox, b: OrientedBox, slack: number): boolean {
     const reachB =
       Math.abs(b.halfWidth * (b.cos * axis.x + b.sin * axis.y)) +
       Math.abs(b.halfHeight * (-b.sin * axis.x + b.cos * axis.y))
-    if (gap >= (reachA + reachB) * slack) return false
+    if (gap >= (reachA + reachB) * SLACK) return false
   }
 
   return true
@@ -87,10 +90,9 @@ function overlaps(a: OrientedBox, b: OrientedBox, slack: number): boolean {
  * Compte les paires de caractères qui se recouvrent.
  *
  * Les voisins immédiats dans l'ordre de pose sont exclus : leurs avances se
- * touchent par construction, c'est ce qui fait un mot. Le `slack` absorbe le
- * contact exact, que le flottant rendrait tantôt disjoint tantôt sécant.
+ * touchent par construction, c'est ce qui fait un mot.
  */
-export function countOverlaps(glyphs: Glyph[], font: FontMetrics, slack = 0.98): number {
+export function countOverlaps(glyphs: Glyph[], font: FontMetrics): number {
   const boxes = glyphs.map((glyph) => boxOf(glyph, font))
   if (boxes.length === 0) return 0
 
@@ -111,8 +113,8 @@ export function countOverlaps(glyphs: Glyph[], font: FontMetrics, slack = 0.98):
 
   for (let i = 0; i < boxes.length; i++) {
     const a = boxes[i]!
-    const cellX = grid.columnOf(a.centre.x)
-    const cellY = grid.columnOf(a.centre.y)
+    const cellX = grid.cellOf(a.centre.x)
+    const cellY = grid.cellOf(a.centre.y)
 
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
@@ -127,7 +129,7 @@ export function countOverlaps(glyphs: Glyph[], font: FontMetrics, slack = 0.98):
           const span = Math.hypot(b.centre.x - a.centre.x, b.centre.y - a.centre.y)
           if (span > radiusOf(a) + radiusOf(b)) continue
 
-          if (overlaps(a, b, slack)) total++
+          if (overlaps(a, b)) total++
         }
       }
     }

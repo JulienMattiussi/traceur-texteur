@@ -30,7 +30,7 @@ export interface RelaxOptions {
   /** Fenêtre de mesure, en échantillons. La même que celle du pipeline. */
   window: number
   /** Plafond de passes, pour qu'un tracé impossible à satisfaire s'arrête quand même. */
-  passes: number
+  maxPasses: number
 }
 
 export interface Relaxed {
@@ -68,7 +68,7 @@ export function relaxCurvature(
   step: number,
   options: RelaxOptions,
 ): Relaxed {
-  const { maxCurvature, window, passes } = options
+  const { maxCurvature, window, maxPasses } = options
   if (points.length < 3 || maxCurvature <= 0) {
     return { points, step, moved: 0, passes: 0 }
   }
@@ -79,7 +79,7 @@ export function relaxCurvature(
   let used = 0
   let previousWorst = Infinity
 
-  for (let pass = 0; pass < passes; pass++) {
+  for (let pass = 0; pass < maxPasses; pass++) {
     const angles = tangentAngles(current, window, closed)
     const bend = curvatures(current, angles, window, closed)
 
@@ -166,8 +166,8 @@ function deviation(points: Point[], reference: Point[]): number {
   let worst = 0
 
   for (const point of points) {
-    const cellX = grid.columnOf(point.x)
-    const cellY = grid.columnOf(point.y)
+    const cellX = grid.cellOf(point.x)
+    const cellY = grid.cellOf(point.y)
     let best = Infinity
 
     // Un anneau à la fois, en s'arrêtant dès qu'un voisin trouvé est plus proche

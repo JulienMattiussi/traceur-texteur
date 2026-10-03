@@ -1,5 +1,5 @@
 import { distance } from '@/lib/geometry'
-import type { Point, Stroke } from '@/lib/types'
+import type { Point, Rect, Stroke } from '@/lib/types'
 
 /**
  * Les tracés de base, engendrés directement dans le repère de la page.
@@ -12,20 +12,18 @@ import type { Point, Stroke } from '@/lib/types'
 
 export type ShapeKind = 'cercle' | 'rectangle' | 'triangle' | 'spirale' | 'zigzag'
 
-export const SHAPES: { kind: ShapeKind; label: string }[] = [
-  { kind: 'spirale', label: 'Spirale' },
-  { kind: 'cercle', label: 'Cercle' },
-  { kind: 'rectangle', label: 'Rectangle' },
-  { kind: 'triangle', label: 'Triangle' },
-  { kind: 'zigzag', label: 'Zigzag' },
+/**
+ * Les formes proposées, et les réglages que chacune lit. L'interface s'en sert pour
+ * n'afficher que les curseurs utiles : c'est ici qu'on sait qu'un cercle n'a pas
+ * d'angles, pas dans le composant.
+ */
+export const SHAPES: { kind: ShapeKind; label: string; options: (keyof ShapeOptions)[] }[] = [
+  { kind: 'spirale', label: 'Spirale', options: ['turns'] },
+  { kind: 'cercle', label: 'Cercle', options: [] },
+  { kind: 'rectangle', label: 'Rectangle', options: ['corner'] },
+  { kind: 'triangle', label: 'Triangle', options: ['corner'] },
+  { kind: 'zigzag', label: 'Zigzag', options: ['teeth', 'corner'] },
 ]
-
-export interface Box {
-  x: number
-  y: number
-  width: number
-  height: number
-}
 
 export interface ShapeOptions {
   /** Rayon des coins arrondis, en pixels. */
@@ -101,7 +99,10 @@ export function roundCorners(points: Point[], closed: boolean, radius: number): 
 function towards(from: Point, to: Point, length: number): Point {
   const span = distance(from, to)
   if (span === 0) return from
-  return { x: from.x + ((to.x - from.x) * length) / span, y: from.y + ((to.y - from.y) * length) / span }
+  return {
+    x: from.x + ((to.x - from.x) * length) / span,
+    y: from.y + ((to.y - from.y) * length) / span,
+  }
 }
 
 /** Pas angulaire donnant des segments d'environ un pixel au rayon indiqué. */
@@ -115,7 +116,7 @@ function angularStep(radius: number): number {
  * feuille vide ; l'ovale est ce qu'on veut presque toujours, et le format carré
  * reste là pour qui veut un cercle exact.
  */
-function circle(box: Box): Stroke {
+function circle(box: Rect): Stroke {
   const radiusX = box.width / 2
   const radiusY = box.height / 2
   const centreX = box.x + radiusX
@@ -129,7 +130,7 @@ function circle(box: Box): Stroke {
   return { points, closed: true }
 }
 
-function rectangle(box: Box, options: ShapeOptions): Stroke {
+function rectangle(box: Rect, options: ShapeOptions): Stroke {
   const corners: Point[] = [
     { x: box.x, y: box.y },
     { x: box.x + box.width, y: box.y },
@@ -139,7 +140,7 @@ function rectangle(box: Box, options: ShapeOptions): Stroke {
   return { points: roundCorners(corners, true, options.corner), closed: true }
 }
 
-function triangle(box: Box, options: ShapeOptions): Stroke {
+function triangle(box: Rect, options: ShapeOptions): Stroke {
   const corners: Point[] = [
     { x: box.x + box.width / 2, y: box.y },
     { x: box.x + box.width, y: box.y + box.height },
@@ -161,7 +162,7 @@ function triangle(box: Box, options: ShapeOptions): Stroke {
  * Elle démarre à un pas du centre plutôt qu'au centre même : au centre exact, le
  * rayon tend vers zéro et le texte avec lui.
  */
-function spiral(box: Box, options: ShapeOptions): Stroke {
+function spiral(box: Rect, options: ShapeOptions): Stroke {
   const outerX = box.width / 2
   const outerY = box.height / 2
   const centreX = box.x + outerX
@@ -172,7 +173,7 @@ function spiral(box: Box, options: ShapeOptions): Stroke {
   const sweep = 2 * Math.PI * turns
 
   const points: Point[] = []
-  for (let angle = 0; angle <= sweep; ) {
+  for (let angle = 0; angle <= sweep;) {
     const growth = start + (1 - start) * (angle / sweep)
     points.push({
       x: centreX + outerX * growth * Math.cos(angle),
@@ -183,7 +184,7 @@ function spiral(box: Box, options: ShapeOptions): Stroke {
   return { points, closed: false }
 }
 
-function zigzag(box: Box, options: ShapeOptions): Stroke {
+function zigzag(box: Rect, options: ShapeOptions): Stroke {
   const teeth = Math.max(1, options.teeth)
   const corners: Point[] = []
   const steps = teeth * 2
@@ -198,7 +199,7 @@ function zigzag(box: Box, options: ShapeOptions): Stroke {
   return { points: roundCorners(corners, false, options.corner), closed: false }
 }
 
-export function buildShape(kind: ShapeKind, box: Box, options: ShapeOptions): Stroke {
+export function buildShape(kind: ShapeKind, box: Rect, options: ShapeOptions): Stroke {
   switch (kind) {
     case 'cercle':
       return circle(box)

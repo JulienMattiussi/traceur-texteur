@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { canvasFor, formatByKey, toPixels } from '@/lib/page'
+import { canvasFor, formatByKey } from '@/lib/page'
 import { compose } from '@/lib/pipeline'
 import { DEFAULT_SETTINGS, type Settings } from '@/lib/settings'
-import { buildShape, SHAPES, type ShapeKind } from '@/lib/shapes'
+import { SHAPES } from '@/lib/shapes'
+import { strokesFor } from '@/lib/source'
 import type { Composition } from '@/lib/types'
 
 function run(overrides: Partial<Settings> = {}): Composition {
   const settings: Settings = { ...DEFAULT_SETTINGS, ...overrides }
   const canvas = canvasFor(formatByKey(settings.formatKey))
-  const stroke = buildShape(settings.shape, canvas.inset, {
-    corner: toPixels(settings.cornerMm),
-    turns: settings.turns,
-    teeth: settings.teeth,
-  })
-  return compose([stroke], canvas, settings)
+  return compose(strokesFor('forme', settings, canvas), canvas, settings)
 }
 
 describe('compose', () => {
@@ -117,6 +113,18 @@ describe('compose', () => {
     expect(stats.overlaps).toBe(0)
   })
 
+  it('garde le tracé exact quand on choisit de laisser les angles nus', () => {
+    // Sur un triangle à angles vifs, élargir déplace le tracé ; laisser nu ne doit
+    // pas y toucher, et enjamber à la place ce qui ne tient pas.
+    const widened = run({ shape: 'triangle', cornerMm: 0 }).stats
+    const bare = run({ shape: 'triangle', cornerMm: 0, widenBends: false }).stats
+
+    expect(widened.roundedMm).toBeGreaterThan(0)
+    expect(bare.roundedMm).toBe(0)
+    expect(bare.skippedMm).toBeGreaterThan(widened.skippedMm)
+    expect(bare.overlaps).toBe(0)
+  })
+
   it('traite le cas le plus lourd sans dégénérer', () => {
     // La spirale de vingt-cinq tours est le pire cas atteignable depuis l'interface,
     // avec près de vingt mille échantillons. Ce qui est vérifié ici, c'est que le
@@ -124,7 +132,7 @@ describe('compose', () => {
     //
     // Le temps de calcul se mesure par `make bench`, qui chauffe le code avant de
     // chronométrer et traite un cas à la fois. Une assertion en millisecondes ici
-    // mesurerait surtout la machine : sous seize fichiers de tests en parallèle, ce
+    // mesurerait surtout la machine : sous une vingtaine de fichiers de tests en parallèle, ce
     // même calcul est passé de 216 ms à 4733 ms sans qu'une ligne de moteur change.
     const { stats } = run({ shape: 'spirale', turns: 25 })
 
@@ -137,7 +145,7 @@ describe('compose', () => {
   })
 
   it('mémorise les mesures utiles au diagnostic', () => {
-    const { stats } = run({ shape: 'spirale' as ShapeKind })
+    const { stats } = run({ shape: 'spirale' })
     expect(stats.strokes).toBe(1)
     expect(stats.strokeLength).toBeGreaterThan(0)
     expect(Object.keys(stats.timings)).toEqual(

@@ -8,10 +8,7 @@ interface PreviewProps {
 }
 
 export function Preview({ composition, showStroke }: PreviewProps) {
-  const svg = useMemo(
-    () => renderSvg(composition, { showStroke }),
-    [composition, showStroke],
-  )
+  const svg = useMemo(() => renderSvg(composition, { showStroke }), [composition, showStroke])
 
   return (
     <div

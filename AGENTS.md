@@ -63,6 +63,7 @@ src/
 │   ├── settings.ts           # Réglages exposés à l'interface
 │   ├── geometry.ts           # Rééchantillonnage, tangentes, courbure, interpolation
 │   ├── grid.ts               # Index spatial : ne comparer que les voisins proches
+│   ├── mask.ts               # Voisinage d'un pixel, partagé par les modules d'image
 │   ├── source.ts             # Les trois sources -> un seul jeu de tracés cadrés
 │   ├── shapes.ts             # Formes de base et arrondi des angles
 │   ├── smooth.ts             # Lissage d'un tracé fait à la main
@@ -92,7 +93,7 @@ src/
 │   ├── Dropzone.tsx          # Dépôt de fichier
 │   ├── DrawPad.tsx           # Tracé à la souris
 │   ├── TextPanel.tsx         # Message, police, remplissage, couleur
-│   ├── Controls.tsx          # Format et bornes de corps
+│   ├── LayoutPanel.tsx       # Format, corps, angles, air, interlettrage
 │   ├── Toolbar.tsx           # Deux groupes : Affichage et Exporter
 │   ├── StatsPanel.tsx        # Voyant de chevauchement et mesures
 │   └── Preview.tsx           # Aperçu
@@ -128,9 +129,10 @@ tests/
   de mesure en tenait une copie ligne pour ligne. Un harnais qui mesure autre chose
   que ce que l'application produit est inutile, et c'est le seul défaut qu'il ne peut
   pas détecter lui-même.
-- **`tools/` importe avec l'alias `@/`**, comme `src/`. Les chemins relatifs y
-  marchaient, mais knip ne les résolvait pas : quatre exports morts sont ainsi passés
-  inaperçus.
+- **`tools/` importe `src/` avec l'alias `@/`**, comme `src/` lui-même. Les chemins
+  relatifs y marchaient, mais knip ne les résolvait pas : quatre exports morts sont
+  ainsi passés inaperçus. Seuls restent relatifs les imports internes à `tools/` et
+  à `tests/` (`./drawing.ts`, `../fixtures`), que `@/` ne couvre pas.
 - **Viser moins de 300 lignes par fichier.**
 
 ---
@@ -302,19 +304,20 @@ ou obligerait à convertir chaque lettre en courbes.
 
 ## Ce que valent les résultats
 
-Mesuré par `make bench`, sur A4 portrait, corps maximal 7 mm, message de 95
-caractères en Times.
+Mesuré par `make bench`, sur A4 portrait, corps maximal 7 mm, message de 94
+caractères en Times. Les temps dépendent de la machine : seuls leurs
+rapports d'une ligne à l'autre ont un sens.
 
 | Cas | Tracés | Glyphes | Répét. | Couverture | Corps (mm) | Enjambé | Chevauch. | Temps |
 |---|---:|---:|---:|---:|---|---:|---:|---:|
-| spirale (7 tours) | 1 | 835 | 10,8 | 100 % | 4,5 à 7,0 | 0 | **0** | 26 ms |
-| spirale (20 tours) | 1 | 4158 | 54,0 | 100 % | 2,6 à 4,8 | 14 mm | **0** | 143 ms |
-| cercle | 1 | 215 | 2,8 | 100 % | 7,0 | 0 | **0** | 5 ms |
-| rectangle | 1 | 339 | 4,4 | 100 % | 2,8 à 7,0 | 0 | **0** | 9 ms |
-| triangle | 1 | 273 | 3,5 | 95 % | 2,5 à 7,0 | 33 mm | **0** | 20 ms |
-| zigzag (6 dents) | 1 | 985 | 12,8 | 80 % | 2,5 à 7,0 | 651 mm | **0** | 32 ms |
-| dessin, contour | 1 | 325 | 4,2 | 82 % | 2,6 à 4,7 | 122 mm | **0** | 12 ms |
-| dessin, squelette | 4 | 277 | 3,6 | 69 % | 2,6 à 4,9 | 205 mm | **0** | 7 ms |
+| spirale (7 tours) | 1 | 835 | 10,8 | 100 % | 4,5 à 7,0 | 0 | **0** | 15 ms |
+| spirale (20 tours) | 1 | 4158 | 54,0 | 100 % | 2,6 à 4,8 | 14 mm | **0** | 79 ms |
+| cercle | 1 | 215 | 2,8 | 100 % | 7,0 | 0 | **0** | 3 ms |
+| rectangle | 1 | 339 | 4,4 | 100 % | 2,8 à 7,0 | 0 | **0** | 3 ms |
+| triangle | 1 | 273 | 3,5 | 95 % | 2,5 à 7,0 | 33 mm | **0** | 15 ms |
+| zigzag (6 dents) | 1 | 985 | 12,8 | 80 % | 2,5 à 7,0 | 651 mm | **0** | 27 ms |
+| dessin, contour | 1 | 325 | 4,2 | 82 % | 2,6 à 4,7 | 122 mm | **0** | 7 ms |
+| dessin, squelette | 4 | 277 | 3,6 | 69 % | 2,6 à 4,9 | 205 mm | **0** | 4 ms |
 
 Les deux derniers cas partent d'une **étoile à cinq branches** dessinée par
 `tools/drawing.ts` : une image de synthèse plutôt qu'une photo, pour la même raison
@@ -325,7 +328,7 @@ sans dépendre du décodeur d'images du navigateur, qui est la seule pièce que
 les deux plafonds de taille l'un après l'autre.
 
 **Le bon réglage** : environ **7 mm de corps maximal, 2,5 mm de corps minimal et
-85 % de remplissage**, avec l'élargissement des angles actif. Le vérifier à l'oeil
+85 % de couloir occupé** (réglage *Air autour du texte*), avec l'élargissement des angles actif. Le vérifier à l'oeil
 est indispensable, les chiffres seuls trompent, et de deux façons : zéro
 chevauchement n'empêche pas un texte de tourner la tête en bas sur la moitié d'un
 cercle, ce qui est inhérent au procédé ; et il n'empêchait pas non plus, avant que le
@@ -347,8 +350,8 @@ les curseurs inutilisables. Deux changements l'ont ramenée à **63 ms** :
   est quadratique en densité d'échantillons, et plus fin ne mesure rien de plus :
   tangente et courbure sont de toute façon lissées sur plusieurs millimètres.
 
-L'élargissement des angles l'a ensuite remontée à **143 ms**, et c'est là qu'il
-coûte le plus cher pour ce qu'il rapporte : voir `RELAX_BUDGET`, qui borne
+L'élargissement des angles l'a ensuite fait remonter (voir le tableau), et c'est là
+qu'il coûte le plus cher pour ce qu'il rapporte : voir `RELAX_BUDGET`, qui borne
 justement cette dépense. Les cas où il sert vraiment, un dessin ou un geste à la
 souris, restent sous les 30 ms.
 
@@ -357,7 +360,8 @@ souris, restent sous les 30 ms.
 - **Le texte tourne la tête en bas** sur la moitié inférieure d'une forme fermée.
   C'est inhérent à un texte qui suit une courbe fermée, pas un défaut ; aucun
   réglage ne l'évite.
-- **Le mode squelette produit un nuage de fragments**, pas un texte. Le squelette
+- **Le mode squelette** (*Tout le dessin* dans l'interface) **produit un nuage de
+  fragments**, pas un texte. Le squelette
   d'un coloriage donne des dizaines de traits courts, sur chacun desquels il n'y a
   la place que d'une syllabe. C'est un effet graphique valable mais ce n'est plus
   de la lecture, d'où le contour par défaut.
@@ -523,8 +527,8 @@ deux sortent de `src/lib/logo.ts` via `spiralPoints`.
   courbure d'un cercle vaut `1/r`, la correction d'avance vaut le rapport des
   rayons, les décalages `xref` du PDF se relisent dans le fichier produit.
 - **Aucune assertion en millisecondes dans la suite.** Elle mesurerait la machine :
-  seize fichiers de tests tournent en parallèle, et le même calcul y est passé de
-  216 ms à 4733 ms sans qu'une ligne de moteur change. Le temps se mesure par
+  une vingtaine de fichiers de tests tournent en parallèle, et le même calcul y est
+  passé de 216 ms à 4733 ms sans qu'une ligne de moteur change. Le temps se mesure par
   `make bench`, qui chauffe le code et traite un cas à la fois ; la suite, elle,
   vérifie que le pire cas ne dégénère pas (zéro chevauchement, couverture, écart au
   dessin borné).
@@ -555,7 +559,11 @@ Tout passe par le Makefile.
 | `make check` | **build + lint + typecheck + knip + tests** |
 | `make test` | Tests unitaires et composants |
 | `make fix` | Formate puis lint |
+| `make knip` | Fichiers, exports et dépendances inutilisés |
+| `make test-coverage` | Tests avec rapport de couverture |
 | `make afm` | Régénère `src/lib/fonts.ts` depuis les AFM d'URW base35 |
 | `make favicon` | Régénère `public/favicon.svg` depuis `src/lib/logo.ts` |
 | `make og` | Régénère `public/og.png` (nécessite google-chrome) |
 | `make bench` | Mesure les cas de référence et écrit `out/` |
+
+`make help` liste toutes les cibles.

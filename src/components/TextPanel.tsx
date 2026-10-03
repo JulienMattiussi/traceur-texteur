@@ -1,5 +1,5 @@
 import { Segmented } from '@/components/Field'
-import type { Settings } from '@/lib/settings'
+import { settingUpdater, type Settings } from '@/lib/settings'
 import type { FontFamily } from '@/lib/types'
 
 /**
@@ -23,8 +23,7 @@ const FAMILIES: { value: FontFamily; label: string }[] = [
 ]
 
 export function TextPanel({ settings, onChange }: TextPanelProps) {
-  const update = <K extends keyof Settings>(key: K, value: Settings[K]): void =>
-    onChange({ ...settings, [key]: value })
+  const update = settingUpdater(settings, onChange)
 
   return (
     <div className="space-y-3.5">

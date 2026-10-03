@@ -27,8 +27,6 @@ export type TraceMode = 'contour' | 'squelette'
 
 export interface TraceOptions extends BinarizeOptions, GraphOptions {
   mode: TraceMode
-  /** Longueur minimale, en pixels, d'un tracé conservé. */
-  minLength?: number
 }
 
 export function traceImage(
@@ -39,15 +37,13 @@ export function traceImage(
 ): Stroke[] {
   const mask = binarize(gray, width, height, options)
 
-  const strokes =
-    options.mode === 'contour'
-      ? traceContours(mask, options.minLength ?? 0)
-      : buildGraph(thin(mask), options).edges.map((edge) => ({
-          points: edge.points,
-          closed: edge.a === edge.b,
-        }))
-
-  return orderStrokes(strokes, options.minLength ?? 0)
+  // Ni filtrés ni rangés ici : la longueur minimale est un réglage de page, en
+  // millimètres imprimés, qui ne se compare qu'après cadrage (voir `source.ts`).
+  if (options.mode === 'contour') return traceContours(mask)
+  return buildGraph(thin(mask), options).edges.map((edge) => ({
+    points: edge.points,
+    closed: edge.a === edge.b,
+  }))
 }
 
 /**

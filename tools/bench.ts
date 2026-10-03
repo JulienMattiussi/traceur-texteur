@@ -13,7 +13,7 @@ import { canvasFor, formatByKey } from '@/lib/page'
 import { renderPdf } from '@/lib/pdf'
 import { compose } from '@/lib/pipeline'
 import { DEFAULT_SETTINGS, type Settings } from '@/lib/settings'
-import { SHAPES, type ShapeKind } from '@/lib/shapes'
+import { SHAPES } from '@/lib/shapes'
 import { strokesFor } from '@/lib/source'
 import { renderSvg } from '@/lib/svg'
 import { star } from './drawing.ts'
@@ -26,17 +26,17 @@ interface Case {
 }
 
 const CASES: Case[] = [
-  ...SHAPES.map((shape) => ({ name: shape.kind, settings: { shape: shape.kind as ShapeKind } })),
-  { name: 'spirale-20-tours', settings: { shape: 'spirale' as ShapeKind, turns: 20 } },
-  { name: 'spirale-3-tours', settings: { shape: 'spirale' as ShapeKind, turns: 3 } },
-  { name: 'spirale-une-fois', settings: { shape: 'spirale' as ShapeKind, repeat: false } },
+  ...SHAPES.map((shape) => ({ name: shape.kind, settings: { shape: shape.kind } })),
+  { name: 'spirale-20-tours', settings: { shape: 'spirale', turns: 20 } },
+  { name: 'spirale-3-tours', settings: { shape: 'spirale', turns: 3 } },
+  { name: 'spirale-une-fois', settings: { shape: 'spirale', repeat: false } },
   {
     name: 'cercle-taille-fixe',
-    settings: { shape: 'cercle' as ShapeKind, maxSizeMm: 4, minSizeMm: 4 },
+    settings: { shape: 'cercle', maxSizeMm: 4, minSizeMm: 4 },
   },
-  { name: 'spirale-mono', settings: { shape: 'spirale' as ShapeKind, family: 'mono' as const } },
-  { name: 'dessin-contour', settings: { traceMode: 'contour' as const }, drawing: true },
-  { name: 'dessin-squelette', settings: { traceMode: 'squelette' as const }, drawing: true },
+  { name: 'spirale-mono', settings: { shape: 'spirale', family: 'mono' } },
+  { name: 'dessin-contour', settings: { traceMode: 'contour' }, drawing: true },
+  { name: 'dessin-squelette', settings: { traceMode: 'squelette' }, drawing: true },
 ]
 
 /** L'étoile de référence du mode dessin, calculée une fois. */
@@ -68,11 +68,8 @@ for (const testCase of CASES) {
   const composition = compose(strokes, canvas, settings)
   const elapsed = performance.now() - started
 
-  writeFileSync(`out/${testCase.name}.svg`, renderSvg(composition, {}))
-  writeFileSync(
-    `out/${testCase.name}-trace.svg`,
-    renderSvg(composition, { showStroke: true, strokeOnly: true }),
-  )
+  writeFileSync(`out/${testCase.name}.svg`, renderSvg(composition))
+  writeFileSync(`out/${testCase.name}-trace.svg`, renderSvg(composition, { strokeOnly: true }))
   writeFileSync(
     `out/${testCase.name}.pdf`,
     renderPdf(composition, formatByKey(settings.formatKey), { title: testCase.name }),

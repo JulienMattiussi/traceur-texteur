@@ -1,5 +1,5 @@
 import { cssFontFamily } from '@/lib/metrics'
-import type { Composition } from '@/lib/types'
+import type { Composition, Glyph } from '@/lib/types'
 
 /**
  * Rendu SVG. Une seule implémentation, partagée par l'aperçu et par l'export :
@@ -46,9 +46,8 @@ export function renderSvg(composition: Composition, options: SvgOptions = {}): s
     )
 
     for (const glyph of glyphs) {
-      const degrees = round((glyph.angle * 180) / Math.PI)
       parts.push(
-        `<text transform="translate(${round(glyph.x)} ${round(glyph.y)}) rotate(${degrees})" font-size="${round(glyph.size)}">${escapeText(glyph.char)}</text>`,
+        `<text transform="${glyphTransform(glyph)}" font-size="${round(glyph.size)}">${escapeText(glyph.char)}</text>`,
       )
     }
 
@@ -57,6 +56,12 @@ export function renderSvg(composition: Composition, options: SvgOptions = {}): s
 
   parts.push('</svg>')
   return parts.join('\n')
+}
+
+/** Position et orientation d'un glyphe. Partagé avec la marque, qui est rendue en JSX. */
+export function glyphTransform(glyph: Glyph): string {
+  const degrees = round((glyph.angle * 180) / Math.PI)
+  return `translate(${round(glyph.x)} ${round(glyph.y)}) rotate(${degrees})`
 }
 
 function round(value: number): number {

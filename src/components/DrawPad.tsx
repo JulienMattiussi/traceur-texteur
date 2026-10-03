@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type PointerEvent } from 'react'
 import type { Point } from '@/lib/types'
 
 /**
@@ -6,7 +6,7 @@ import type { Point } from '@/lib/types'
  *
  * Elle ne renvoie que des positions brutes, normalisées entre 0 et 1 : le
  * lissage, la détection de fermeture et la mise à l'échelle sont du ressort de
- * `smooth.ts` et de `page.ts`. Un composant qui se contente de collecter le geste
+ * `smooth.ts` et de `source.ts`. Un composant qui se contente de collecter le geste
  * reste testable et n'a pas d'opinion sur la géométrie.
  *
  * Les événements de pointeur, et non de souris : c'est la même interface pour le
@@ -25,7 +25,7 @@ export function DrawPad({ aspect, paths, onChange }: DrawPadProps) {
   const surface = useRef<HTMLDivElement>(null)
   const [current, setCurrent] = useState<Point[] | null>(null)
 
-  const positionOf = (event: React.PointerEvent): Point | null => {
+  const positionOf = (event: PointerEvent): Point | null => {
     const box = surface.current?.getBoundingClientRect()
     if (!box || box.width === 0 || box.height === 0) return null
     return {
@@ -34,14 +34,14 @@ export function DrawPad({ aspect, paths, onChange }: DrawPadProps) {
     }
   }
 
-  const start = (event: React.PointerEvent): void => {
+  const start = (event: PointerEvent): void => {
     const point = positionOf(event)
     if (!point) return
     event.currentTarget.setPointerCapture(event.pointerId)
     setCurrent([point])
   }
 
-  const extend = (event: React.PointerEvent): void => {
+  const extend = (event: PointerEvent): void => {
     if (!current) return
     const point = positionOf(event)
     if (!point) return
@@ -101,7 +101,7 @@ export function DrawPad({ aspect, paths, onChange }: DrawPadProps) {
             disabled={paths.length === 0}
             className="rounded-md px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-300 transition-colors hover:bg-slate-100 disabled:opacity-40"
           >
-            Annuler
+            Retirer le dernier
           </button>
           <button
             type="button"

@@ -6,7 +6,7 @@
  * même feuille, donc seule la taille imprimée est une unité de lisibilité qui
  * ait un sens. Les pixels ne servent qu'au calcul.
  */
-import type { Stroke } from '@/lib/types'
+import type { Rect, Stroke } from '@/lib/types'
 
 export interface Format {
   key: string
@@ -39,7 +39,7 @@ export interface Canvas {
   width: number
   height: number
   /** Zone utile, marges déduites, en pixels. */
-  inset: { x: number; y: number; width: number; height: number }
+  inset: Rect
 }
 
 export function canvasFor(format: Format): Canvas {

@@ -1,3 +1,4 @@
+import { NEIGHBOURS_8 } from '@/lib/mask'
 import type { Mask } from '@/lib/types'
 
 export interface BinarizeOptions {
@@ -76,17 +77,6 @@ export function binarize(
   const mask: Mask = { width, height, data }
   return minBlobArea > 0 ? despeckle(mask, minBlobArea) : mask
 }
-
-const NEIGHBOURS_8 = [
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-  [-1, 0],
-  [1, 0],
-  [-1, 1],
-  [0, 1],
-  [1, 1],
-] as const
 
 /** Retire les composantes connexes d'encre trop petites pour être un trait. */
 function despeckle(mask: Mask, minArea: number): Mask {

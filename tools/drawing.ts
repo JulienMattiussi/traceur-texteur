@@ -55,6 +55,8 @@ function drawStrokes(width: number, height: number, paths: Point[][], thickness:
   return { gray, width, height }
 }
 
+const BRANCHES = 5
+
 /**
  * Une étoile à cinq branches, tracée d'un trait épais et fermée.
  *
@@ -62,14 +64,14 @@ function drawStrokes(width: number, height: number, paths: Point[][], thickness:
  * silhouette alterne pointes serrées et longues portions droites, donc où les deux
  * plafonds de taille jouent l'un après l'autre.
  */
-export function star(size: number, points = 5): Drawing {
+export function star(size: number): Drawing {
   const centre = size / 2
   const outer = size * 0.42
   const inner = outer * 0.42
   const path: Point[] = []
 
-  for (let i = 0; i <= points * 2; i++) {
-    const angle = -Math.PI / 2 + (Math.PI * i) / points
+  for (let i = 0; i <= BRANCHES * 2; i++) {
+    const angle = -Math.PI / 2 + (Math.PI * i) / BRANCHES
     const radius = i % 2 === 0 ? outer : inner
     path.push({ x: centre + radius * Math.cos(angle), y: centre + radius * Math.sin(angle) })
   }

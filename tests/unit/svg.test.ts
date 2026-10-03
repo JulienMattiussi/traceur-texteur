@@ -46,7 +46,7 @@ describe('renderSvg', () => {
     expect(svg).toContain('height="300"')
   })
 
-  it('pose un fond blanc, sauf en surimpression', () => {
+  it('pose un fond blanc, sauf si on le demande transparent', () => {
     expect(renderSvg(composition())).toContain('fill="#ffffff"')
     // Un SVG transparent s'imprimerait sur n'importe quoi : jamais à l'export.
     expect(renderSvg(composition(), { transparent: true })).not.toContain('fill="#ffffff"')

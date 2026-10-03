@@ -1,3 +1,4 @@
+import { inkedIn } from '@/lib/mask'
 import type { Mask, Point, Stroke } from '@/lib/types'
 
 /**
@@ -29,13 +30,15 @@ const DIRECTIONS = [
   [1, -1],
 ] as const
 
+/** Index de l'ouest dans `DIRECTIONS`. */
+const WEST = 4
+
 /** Index de la direction opposée : quatre crans sur huit. */
 const OPPOSITE = 4
 
-export function traceContours(mask: Mask, minPerimeter = 0): Stroke[] {
+export function traceContours(mask: Mask): Stroke[] {
   const { width, height, data } = mask
-  const inked = (x: number, y: number): boolean =>
-    x >= 0 && y >= 0 && x < width && y < height && data[y * width + x] === 1
+  const inked = inkedIn(mask)
 
   const claimed = new Uint8Array(width * height)
   const strokes: Stroke[] = []
@@ -54,7 +57,7 @@ export function traceContours(mask: Mask, minPerimeter = 0): Stroke[] {
       // retracerait le même contour.
       fill(x, y, mask, claimed)
 
-      if (contour.length >= 3 && perimeter(contour) >= minPerimeter) {
+      if (contour.length >= 3) {
         strokes.push({ points: contour, closed: true })
       }
     }
@@ -83,7 +86,7 @@ function walkContour(
   let x = startX
   let y = startY
   // Direction d'où l'on vient : l'ouest, dont on sait qu'il est du fond.
-  let from = 4
+  let from = WEST
 
   for (;;) {
     const state = `${x},${y},${from}`
@@ -131,12 +134,4 @@ function fill(startX: number, startY: number, mask: Mask, claimed: Uint8Array): 
       stack.push(q)
     }
   }
-}
-
-function perimeter(points: Point[]): number {
-  let total = 0
-  for (let i = 1; i < points.length; i++) {
-    total += Math.hypot(points[i]!.x - points[i - 1]!.x, points[i]!.y - points[i - 1]!.y)
-  }
-  return total
 }

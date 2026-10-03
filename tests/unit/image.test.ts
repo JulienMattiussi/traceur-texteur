@@ -116,11 +116,9 @@ describe('loadGrayImage', () => {
     expect(loaded.gray[1]).toBe(255)
   })
 
-  it('garde le nom du fichier et une URL vers l’original', async () => {
+  it('garde le nom du fichier', async () => {
     const loaded = await loadGrayImage(file('lapin.jpg'))
-
     expect(loaded.name).toBe('lapin.jpg')
-    expect(loaded.sourceUrl).toBe(createdUrls[0])
   })
 
   it('libère le bitmap, même si le décodage échoue en route', async () => {

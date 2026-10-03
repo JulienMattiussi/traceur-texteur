@@ -6,9 +6,9 @@ import type { Composition } from '@/lib/types'
  * recouvrent, qui doit rester à zéro.
  *
  * Le voyant ne s'appuie jamais sur la couleur seule, toujours sur un symbole et
- * un libellé. Et les chiffres sont en tailles proportionnelles, pas tabulaires :
+ * un libellé. Les grands chiffres des tuiles sont en tailles proportionnelles :
  * à cette taille, `tabular-nums` donne à chaque chiffre la largeur d'un zéro et le
- * nombre paraît distendu.
+ * nombre paraît distendu. La liste du bas, elle, est tabulaire pour s'aligner.
  */
 
 function Tile({ label, value }: { label: string; value: string }) {

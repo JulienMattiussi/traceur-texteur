@@ -2,7 +2,7 @@ import { DrawPad } from '@/components/DrawPad'
 import { Dropzone } from '@/components/Dropzone'
 import { Segmented, Slider } from '@/components/Field'
 import { SHAPES, type ShapeKind } from '@/lib/shapes'
-import type { Settings, SourceKind } from '@/lib/settings'
+import { settingUpdater, type Settings, type SourceKind } from '@/lib/settings'
 import type { Point } from '@/lib/types'
 
 /**
@@ -19,7 +19,7 @@ interface SourcePanelProps {
 
   imageName: string | null
   onFile: (file: File) => void
-  busy: boolean
+  loadingImage: boolean
 
   aspect: number
   paths: Point[][]
@@ -39,27 +39,28 @@ export function SourcePanel({
   onSettings,
   imageName,
   onFile,
-  busy,
+  loadingImage,
   aspect,
   paths,
   onPaths,
 }: SourcePanelProps) {
-  const update = <K extends keyof Settings>(key: K, value: Settings[K]): void =>
-    onSettings({ ...settings, [key]: value })
+  const update = settingUpdater(settings, onSettings)
+  const shapeOptions = SHAPES.find((entry) => entry.kind === settings.shape)?.options ?? []
 
   return (
     <div className="space-y-3.5">
-      <Segmented value={source} options={SOURCES} onChange={onSource} />
+      <Segmented ariaLabel="Source du tracé" value={source} options={SOURCES} onChange={onSource} />
 
       {source === 'forme' ? (
         <div className="space-y-3.5">
           <Segmented
+            ariaLabel="Forme"
             value={settings.shape}
             options={SHAPES.map((shape) => ({ value: shape.kind, label: shape.label }))}
             onChange={(shape: ShapeKind) => update('shape', shape)}
           />
 
-          {settings.shape === 'spirale' ? (
+          {shapeOptions.includes('turns') ? (
             <Slider
               label="Tours"
               hint="Plus il y a de tours, plus ils sont serrés, donc plus le texte est petit."
@@ -70,7 +71,7 @@ export function SourcePanel({
             />
           ) : null}
 
-          {settings.shape === 'zigzag' ? (
+          {shapeOptions.includes('teeth') ? (
             <Slider
               label="Dents"
               hint="Au-delà d'une dizaine, les pointes deviennent trop étroites pour porter du texte."
@@ -81,9 +82,7 @@ export function SourcePanel({
             />
           ) : null}
 
-          {settings.shape === 'rectangle' ||
-          settings.shape === 'triangle' ||
-          settings.shape === 'zigzag' ? (
+          {shapeOptions.includes('corner') ? (
             <Slider
               label="Arrondi des angles"
               hint="Un angle vif écraserait le texte : sa courbure y est infinie."
@@ -99,7 +98,7 @@ export function SourcePanel({
 
       {source === 'dessin' ? (
         <div className="space-y-3.5">
-          <Dropzone onFile={onFile} busy={busy} currentName={imageName} />
+          <Dropzone onFile={onFile} loading={loadingImage} currentName={imageName} />
 
           <Segmented
             label="Ce qu'on suit"

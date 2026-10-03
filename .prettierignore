@@ -3,3 +3,5 @@ node_modules
 coverage
 out
 package-lock.json
+# Généré par `make afm`, dans sa propre mise en forme compacte
+src/lib/fonts.ts

@@ -67,12 +67,6 @@ describe('traceContours', () => {
     expect(traceContours(mask)).toHaveLength(2)
   })
 
-  it('écarte les contours plus courts que demandé', () => {
-    const mask = filledRectangle(60, 60, { x: 10, y: 10, width: 4, height: 4 })
-    expect(traceContours(mask, 0)).toHaveLength(1)
-    expect(traceContours(mask, 100)).toHaveLength(0)
-  })
-
   it('ignore un pixel isolé, qui n’a pas de contour à suivre', () => {
     const mask = filledRectangle(20, 20, { x: 10, y: 10, width: 1, height: 1 })
     expect(traceContours(mask)).toHaveLength(0)
@@ -122,17 +116,47 @@ describe('orderStrokes', () => {
   it('range du plus long au plus court', () => {
     // L'ordre décide où tombent les premiers mots : sur le tracé le plus long, donc
     // le plus lisible.
-    const short = { points: [{ x: 0, y: 0 }, { x: 5, y: 0 }], closed: false }
-    const long = { points: [{ x: 0, y: 0 }, { x: 200, y: 0 }], closed: false }
-    const medium = { points: [{ x: 0, y: 0 }, { x: 50, y: 0 }], closed: false }
+    const short = {
+      points: [
+        { x: 0, y: 0 },
+        { x: 5, y: 0 },
+      ],
+      closed: false,
+    }
+    const long = {
+      points: [
+        { x: 0, y: 0 },
+        { x: 200, y: 0 },
+      ],
+      closed: false,
+    }
+    const medium = {
+      points: [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+      ],
+      closed: false,
+    }
 
     const ordered = orderStrokes([short, long, medium], 0)
     expect(ordered.map((stroke) => stroke.points[1]!.x)).toEqual([200, 50, 5])
   })
 
   it('écarte ce qui est trop court pour porter plus d’une syllabe', () => {
-    const short = { points: [{ x: 0, y: 0 }, { x: 5, y: 0 }], closed: false }
-    const long = { points: [{ x: 0, y: 0 }, { x: 200, y: 0 }], closed: false }
+    const short = {
+      points: [
+        { x: 0, y: 0 },
+        { x: 5, y: 0 },
+      ],
+      closed: false,
+    }
+    const long = {
+      points: [
+        { x: 0, y: 0 },
+        { x: 200, y: 0 },
+      ],
+      closed: false,
+    }
     expect(orderStrokes([short, long], 50)).toHaveLength(1)
   })
 })

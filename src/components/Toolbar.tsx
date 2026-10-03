@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 /**
  * La barre est en deux groupes étiquetés, comme dans traceur-compteur et pour la
  * même raison : mélangés, il fallait relire toute la barre pour trouver le bouton
@@ -11,10 +13,10 @@ interface ToolbarProps {
   onExportSvg: () => void
   onExportPdf: () => void
   onPrint: () => void
-  busy: boolean
+  exporting: boolean
 }
 
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
+function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <span className="mb-1 block text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
@@ -34,7 +36,7 @@ function Button({
   onClick: () => void
   disabled?: boolean
   pressed?: boolean
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <button
@@ -60,7 +62,7 @@ export function Toolbar({
   onExportSvg,
   onExportPdf,
   onPrint,
-  busy,
+  exporting,
 }: ToolbarProps) {
   return (
     <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
@@ -71,7 +73,7 @@ export function Toolbar({
       </Group>
 
       <Group label="Exporter">
-        <Button onClick={onExportPng} disabled={busy}>
+        <Button onClick={onExportPng} disabled={exporting}>
           PNG
         </Button>
         <Button onClick={onExportSvg}>SVG</Button>

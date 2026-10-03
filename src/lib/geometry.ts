@@ -164,9 +164,9 @@ export function curvatures(
 
   // Longueurs cumulées, pour obtenir l'arc entre deux échantillons par une simple
   // soustraction. On divise par l'arc **mesuré** et non par `fenêtre x pas` : c'est
-  // la même chose sur un échantillonnage régulier, mais `relax.ts` déforme le tracé
-  // sans le rééchantillonner, et supposer un pas constant y sous-estimait la
-  // courbure de vingt pour cent.
+  // la même chose sur un échantillonnage régulier, mais rien ici ne le garantit. Un
+  // tracé déformé sans être rééchantillonné, comme le faisait la première version de
+  // `relax.ts`, voyait sa courbure sous-estimée de vingt pour cent.
   const arc = new Float64Array(count + 1)
   for (let i = 1; i <= count; i++) {
     const previous = points[i - 1]!

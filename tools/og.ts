@@ -14,18 +14,18 @@
  */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { canvasFor, toPixels, type Format } from '@/lib/page'
+import { loadEnv } from 'vite'
+import { BRAND_BACKGROUND, BRAND_INK } from '@/lib/logo'
+import { canvasFor, toMillimetres, type Format } from '@/lib/page'
 import { compose } from '@/lib/pipeline'
 import { DEFAULT_SETTINGS, type Settings } from '@/lib/settings'
-import { buildShape } from '@/lib/shapes'
+import { strokesFor } from '@/lib/source'
 import { renderSvg } from '@/lib/svg'
 
 /** Le format imposé par les réseaux sociaux, en pixels. */
 const WIDTH = 1200
 const HEIGHT = 630
 
-const BACKGROUND = '#0f172a'
-const INK = '#5eead4'
 const TITLE = '#f8fafc'
 const MUTED = '#94a3b8'
 
@@ -39,18 +39,18 @@ const SANS = 'Helvetica, Nimbus Sans, Arial, sans-serif'
 const FORMAT: Format = {
   key: 'og',
   label: 'Partage',
-  widthMm: WIDTH / 4,
-  heightMm: HEIGHT / 4,
+  widthMm: toMillimetres(WIDTH),
+  heightMm: toMillimetres(HEIGHT),
 }
+
+/** Le domaine affiché sous le titre : le même que celui des métadonnées. */
+const SITE = new URL(loadEnv('production', process.cwd()).VITE_SITE_URL!).host
 
 const settings: Settings = {
   ...DEFAULT_SETTINGS,
   text: 'Un message qui suit le tracé et grandit avec la place libre',
-  family: 'serif',
-  colour: INK,
-  repeat: true,
+  colour: BRAND_INK,
   maxSizeMm: 6,
-  minSizeMm: 2.5,
   turns: 6,
 }
 
@@ -65,13 +65,10 @@ const canvas = canvasFor(FORMAT)
  */
 const SPIRAL_BOX = { x: 600, y: 55, width: 520, height: 520 }
 
-const stroke = buildShape('spirale', SPIRAL_BOX, {
-  corner: toPixels(settings.cornerMm),
-  turns: settings.turns,
-  teeth: settings.teeth,
-})
-
-const composition = compose([stroke], canvas, settings)
+// La forme passe par `strokesFor` comme dans l'application, simplement cadrée dans
+// le carré de droite au lieu de la zone utile de la page.
+const strokes = strokesFor('forme', settings, { ...canvas, inset: SPIRAL_BOX })
+const composition = compose(strokes, canvas, settings)
 
 // Le fond et le titre sont posés autour de la composition, donc celle-ci est rendue
 // sans son fond blanc. C'est le même `renderSvg` que l'aperçu et l'export.
@@ -80,14 +77,14 @@ const inner = renderSvg(composition, { transparent: true })
   .replace(/<\/svg>\s*$/, '')
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}">
-  <rect width="${WIDTH}" height="${HEIGHT}" fill="${BACKGROUND}"/>
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="${BRAND_BACKGROUND}"/>
 ${inner}
   <g font-family="${SANS}">
     <text x="72" y="258" font-size="66" font-weight="700" fill="${TITLE}">Traceur-texteur</text>
-    <text x="72" y="316" font-size="27" fill="${INK}">Un texte le long d'un tracé</text>
+    <text x="72" y="316" font-size="27" fill="${BRAND_INK}">Un texte le long d'un tracé</text>
     <text x="72" y="378" font-size="23" fill="${MUTED}">La taille suit la place disponible,</text>
     <text x="72" y="412" font-size="23" fill="${MUTED}">donc aucune lettre n'en recouvre une autre.</text>
-    <text x="72" y="514" font-size="21" fill="${MUTED}">traceur-texteur.vercel.app</text>
+    <text x="72" y="514" font-size="21" fill="${MUTED}">${SITE}</text>
   </g>
 </svg>
 `

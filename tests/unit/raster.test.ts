@@ -78,8 +78,7 @@ describe('rasterize', () => {
   })
 
   it('impose un fond opaque', async () => {
-    // Le SVG destiné à la surimpression est transparent ; un PNG partagé, lui,
-    // s'afficherait noir sur les messageries en thème sombre.
+    // Un PNG transparent s'afficherait noir sur les messageries en thème sombre.
     await rasterize(SVG)
 
     expect(context.fillStyle).toBe('#ffffff')
